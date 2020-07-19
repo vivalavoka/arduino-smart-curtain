@@ -8,6 +8,11 @@
 #define button_idle 5000
 
 #include <CustomStepper.h>
+#include "IRremote.h"
+
+const int RECEIVE_PIN = 2;
+IRrecv irrecv(A0);
+decode_results results;
 
 // Указываем пины, к которым подключен драйвер шагового двигателя
 CustomStepper stepper(8, 9, 10, 11);
@@ -25,39 +30,55 @@ enum motorState mtrState = Stop;
 
 unsigned long pressTimestamp;
 
-const int btPin = 2;
+unsigned long minus = 16753245;
+unsigned long neutral = 16736925;
+unsigned long plus = 16769565;
 
 void setup() {
   stepper.setRPM(12);                 // Устанавливаем кол-во оборотов в минуту
   stepper.setSPR(4075.7728395);       // Устанавливаем кол-во шагов на полный оборот. Максимальное значение 4075.7728395
 
-  // Кнопка
-  pinMode(2, INPUT);
-
+  irrecv.enableIRIn(); // Start the receiver
+  pinMode(A0, INPUT); 
   Serial.begin(9600);
 }
 
 void loop() {
   unsigned long mls = millis();
 
-  if (digitalRead(btPin)) {
-    doEvent(Press);
-  } else {
-    doEvent(Release);
+  if (irrecv.decode(&results)) {
+    Serial.print(results.value);
+    Serial.print("\n");
+    if (results.value == 16753245) {
+      mtrState = RunCW;
+    }
+    if (results.value == 16769565) {
+      mtrState = RunCCW;
+    }
+    if (results.value == 16736925) {
+      mtrState = Stop;
+    }
+    irrecv.resume();// Receive the next value
   }
 
-  if (mls - pressTimestamp > button_debounce) {
-    doEvent(WaitDebounce);
-  }
-  if (mls - pressTimestamp > button_hold) {
-    doEvent(WaitHold);
-  }
-  if (mls - pressTimestamp > button_long) {
-    doEvent(WaitLongHold);
-  }
-  if (mls - pressTimestamp > button_idle) {
-    doEvent(WaitIdle);
-  }
+  // if (digitalRead(btPin)) {
+  //   doEvent(Press);
+  // } else {
+  //   doEvent(Release);
+  // }
+
+  // if (mls - pressTimestamp > button_debounce) {
+  //   doEvent(WaitDebounce);
+  // }
+  // if (mls - pressTimestamp > button_hold) {
+  //   doEvent(WaitHold);
+  // }
+  // if (mls - pressTimestamp > button_long) {
+  //   doEvent(WaitLongHold);
+  // }
+  // if (mls - pressTimestamp > button_idle) {
+  //   doEvent(WaitIdle);
+  // }
 
   if (mtrState == Stop) {
     stepper.setDirection(STOP);
