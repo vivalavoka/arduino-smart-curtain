@@ -63,7 +63,7 @@ void loop() {
     stepper.setDirection(STOP);
   }
 
-  if (stepper.isDone()) {    
+  if (stepper.isDone()) {
     if (mtrState == RunCW) {
       Serial.print("Rotate CW\n");
       stepper.setDirection(CW);
@@ -116,7 +116,8 @@ void doEvent(enum event e) {
 void onClick(enum buttonState s) {
   switch (s) {
     case Click:
-      mtrState = mtrState == RunCW ? Stop : RunCW;
+      mtrState = mtrState == RunCCW ? RunCW : RunCCW;
+      stepper.setDirection(STOP);
       Serial.print("Click\n");
       break;
     case Hold:
