@@ -1,51 +1,62 @@
-// #include <CyberLib.h>
+// Видеообзоры и уроки работы с ARDUINO на YouTube-канале IOMOIO: https://www.youtube.com/channel/UCmNXABaTjX_iKH28TTJpiqA
 
-// void setup()
-// {
-//   D8_Out;
-//   D9_Out;
-//   D10_Out;
-//   D11_Out;
-// }
+#include <CustomStepper.h>            // Подключаем библиотеку управления шаговым двигателем. По умолчанию настроена на двигатель 28BYJ-48-5V
+CustomStepper stepper(8, 9, 10, 11);  // Указываем пины, к которым подключен драйвер шагового двигателя
 
-// void loop()
-// {
-//   D8_High;
-//   D9_High;
-//   D10_Low;
-//   D11_Low;
-//   delay_ms(2000);
-//   // D8_Low;
-//   // D9_Low;
-//   // D10_Low;
-//   // D11_Low;
-//   // delay_ms(2000);
-// }
+const int buttonPin = 2;
 
-#include <Stepper.h>
+int example = 1;
+int buttonState = 0;
+int touched = 0;
 
-// указываем количество шагов нашего мотора - в нашем случае 64
-#define STEPS 64
+void setup()
+{
+  stepper.setRPM(12);                 // Устанавливаем кол-во оборотов в минуту
+  stepper.setSPR(4075.7728395);       // Устанавливаем кол-во шагов на полный оборот. Максимальное значение 4075.7728395
 
-// Создаем экземпляр класса Stepper, и указываем 
-// количество шагов и пины подключния
-Stepper stepper(STEPS, 8, 9, 10, 11);
-
-// переменная для запоминания предыдущего значения
-int previous = 0;
-
-void setup() {
-  // Устанавливаем скорость вращения в об/мин
-  stepper.setSpeed(90);
+  // pinMode(2, INPUT);
+  // Serial.begin(9600);
 }
 
-void loop() {
-  // новое значение полученное с датчика
-  int val = analogRead(0); // При подключении датчика, 0 заменить на пин датчика
+void loop()
+{
+  // buttonState = digitalRead(buttonPin);
 
-  // Прокрутить на разницу шагов между новым полученным значением и предыдущим
-  stepper.step(val - previous);
+  // if (buttonState == HIGH && touched == 0) {
+  //   touched = 1;
+  //   Serial.print("Start\n");
+  //   stepper.setDirection(CW);
+  //   stepper.rotate();
 
-  // Запоминаем новое полученное значение
-  previous = val;
+  // } else if (buttonState == LOW && touched == 1) {
+  //   touched = 0;
+
+  //   Serial.print("Stop\n");
+  //   stepper.setDirection(STOP);
+  // }
+
+  // stepper.run();
+
+  if (stepper.isDone() and example == 1)  // Когда предыдущая команда выполнена (см. ниже), метод stepper.isDone() возвращает true
+  {
+    Serial.print("Example 1\n");
+    stepper.setDirection(CW);         // Устанавливает направление вращения. Может принимать 3 значения: CW - по часовой, CCW - против часовой, STOP
+    stepper.rotate(1);                // Устанавливает вращение на заданное кол-во оборотов
+    example = 2;
+  }
+  if (stepper.isDone() and example == 2)
+  {
+    Serial.print("Example 2\n");
+    stepper.setDirection(CCW);
+    stepper.rotateDegrees(90);        // Поворачивает вал на заданное кол-во градусов. Можно указывать десятичную точность (например 90.5), но не принимаются отрицательные значения
+    example = 3;
+  }
+  if (stepper.isDone() and example == 3)
+  {
+    Serial.print("Example 3\n");
+    stepper.setDirection(CW);
+    stepper.rotate();
+    // Будет вращать пока не получит команду о смене направления или пока не получит директиву STOP
+  }
+  stepper.run();                      // Этот метод обязателен в блоке loop. Он инициирует работу двигателя, когда это необходимо
 }
