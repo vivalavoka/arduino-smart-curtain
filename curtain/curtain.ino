@@ -18,48 +18,68 @@ decode_results results;
 CustomStepper stepper(8, 9, 10, 11);
 
 // События
-enum event {Press, Release, WaitDebounce, WaitHold, WaitLongHold, WaitIdle};
+// enum event {Press, Release, WaitDebounce, WaitHold, WaitLongHold, WaitIdle};
 
-enum buttonState {Idle, PreClick, Click, Hold, LongHold, ForcedIdle};
+// enum buttonState {Idle, PreClick, Click, Hold, LongHold, ForcedIdle};
 
-enum buttonState btnState = Idle;
+// enum buttonState btnState = Idle;
 
-enum motorState {RunCW, RunCCW, Stop};
+enum motorState {Idle, RunCW, RunCCW};
 
-enum motorState mtrState = Stop;
+enum motorState mtrState = Idle;
+
+enum irEvent {Close, Open, Stop};
 
 unsigned long pressTimestamp;
 
-unsigned long minus = 16753245;
-unsigned long neutral = 16736925;
-unsigned long plus = 16769565;
+const unsigned long minus = 16753245;
+const unsigned long neutral = 16736925;
+const unsigned long plus = 16769565;
 
 void setup() {
-  stepper.setRPM(12);                 // Устанавливаем кол-во оборотов в минуту
-  stepper.setSPR(4075.7728395);       // Устанавливаем кол-во шагов на полный оборот. Максимальное значение 4075.7728395
+  // Устанавливаем кол-во оборотов в минуту
+  stepper.setRPM(12);
+  // Устанавливаем кол-во шагов на полный оборот. Максимальное значение 4075.7728395
+  stepper.setSPR(4075.7728395);
 
-  irrecv.enableIRIn(); // Start the receiver
-  pinMode(A0, INPUT); 
+  stepper.setDirection(STOP);
+  stepper.rotate();
+
+  irrecv.enableIRIn();
+  pinMode(A0, INPUT);
+
   Serial.begin(9600);
 }
 
 void loop() {
-  unsigned long mls = millis();
+  controlLoop();
 
-  if (irrecv.decode(&results)) {
-    Serial.print(results.value);
-    Serial.print("\n");
-    if (results.value == 16753245) {
-      mtrState = RunCW;
+  motorManagerLoop();
+}
+
+void motorManagerLoop() {
+  stepper.run();
+}
+
+void controlLoop() {
+    if (irrecv.decode(&results)) {
+      Serial.print(results.value);
+      Serial.print("\n");
+      switch (results.value) {
+        case plus:
+          doEvent(Open);
+          break;
+        case minus:
+          doEvent(Close);
+          break;
+        case neutral:
+          doEvent(Stop);
+          break;
+      }
+      irrecv.resume();
     }
-    if (results.value == 16769565) {
-      mtrState = RunCCW;
-    }
-    if (results.value == 16736925) {
-      mtrState = Stop;
-    }
-    irrecv.resume();// Receive the next value
-  }
+
+  // unsigned long mls = millis();
 
   // if (digitalRead(btPin)) {
   //   doEvent(Press);
@@ -79,76 +99,90 @@ void loop() {
   // if (mls - pressTimestamp > button_idle) {
   //   doEvent(WaitIdle);
   // }
-
-  if (mtrState == Stop) {
-    stepper.setDirection(STOP);
-  }
-
-  if (stepper.isDone()) {
-    if (mtrState == RunCW) {
-      Serial.print("Rotate CW\n");
-      stepper.setDirection(CW);
-    } else if (mtrState == RunCCW) {
-      Serial.print("Rotate CCW\n");
-      stepper.setDirection(CCW);
-    } else if (mtrState == Stop) {
-      stepper.setDirection(STOP);
-    }
-    stepper.rotate();
-  }
-  stepper.run();
 }
 
-void doEvent(enum event e) {
+// void doEvent(enum event e) {
+//   switch (e) {
+//     case Press:
+//       if (btnState == Idle) {
+//         btnState =  PreClick;
+//         pressTimestamp = millis();
+//       }
+//       break;
+//     case Release:
+//       onClick(btnState);
+//       btnState = Idle;
+//       break;
+//     case WaitDebounce:
+//       if (btnState == PreClick) {
+//         btnState = Click;
+//       }
+//       break;
+//     case WaitHold:
+//       if (btnState == Click) {
+//         btnState = Hold;
+//       }
+//       break;
+//     case WaitLongHold:
+//       if (btnState == Hold) {
+//         btnState = LongHold;
+//       }
+//       break;
+//     case WaitIdle:
+//       if (btnState == LongHold) {
+//         // btnState = Idle;
+//       }
+//       break;
+//   }
+// }
+
+// void onClick(enum buttonState s) {
+//   switch (s) {
+//     case Click:
+//       mtrState = mtrState == RunCCW ? RunCW : RunCCW;
+//       stepper.setDirection(STOP);
+//       Serial.print("Click\n");
+//       break;
+//     case Hold:
+//       mtrState = Stop;
+//       Serial.print("Hold\n");
+//       break;
+//     case LongHold:
+//       Serial.print("LongHold\n");
+//       break;
+//     default:
+//       break;
+//   }
+// }
+
+
+void doEvent(enum irEvent e) {
   switch (e) {
-    case Press:
-      if (btnState == Idle) {
-        btnState =  PreClick;
-        pressTimestamp = millis();
+    case Close: {
+      if (mtrState != RunCCW) {
+        stepper.setDirection(CCW);
+        stepper.rotate();
+        mtrState = RunCCW;
+        Serial.print("Close\n");
       }
       break;
-    case Release:
-      onClick(btnState);
-      btnState = Idle;
-      break;
-    case WaitDebounce:
-      if (btnState == PreClick) {
-        btnState = Click;
+    }
+    case Open: {
+      if (mtrState != RunCW) {
+        stepper.setDirection(CW);
+        stepper.rotate();
+        mtrState = RunCW;
+        Serial.print("Open\n");
       }
       break;
-    case WaitHold:
-      if (btnState == Click) {
-        btnState = Hold;
+    }
+    case Stop: {
+      if (mtrState != Idle) {
+        stepper.setDirection(STOP);
+        mtrState = Idle;
+        Serial.print("Stop\n");
       }
       break;
-    case WaitLongHold:
-      if (btnState == Hold) {
-        btnState = LongHold;
-      }
-      break;
-    case WaitIdle:
-      if (btnState == LongHold) {
-        // btnState = Idle;
-      }
-      break;
-  }
-}
-
-void onClick(enum buttonState s) {
-  switch (s) {
-    case Click:
-      mtrState = mtrState == RunCCW ? RunCW : RunCCW;
-      stepper.setDirection(STOP);
-      Serial.print("Click\n");
-      break;
-    case Hold:
-      mtrState = Stop;
-      Serial.print("Hold\n");
-      break;
-    case LongHold:
-      Serial.print("LongHold\n");
-      break;
-    default:
-      break;
+    }
   }
 }
