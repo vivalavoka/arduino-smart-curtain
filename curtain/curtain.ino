@@ -7,15 +7,11 @@
 // Ошибка, на кнопку сели
 #define button_idle 5000
 
+#include <avr/eeprom.h>
 #include <CustomStepper.h>
 #include "IRremote.h"
 
-const int RECEIVE_PIN = 2;
-IRrecv irrecv(A0);
-decode_results results;
-
-// Указываем пины, к которым подключен драйвер шагового двигателя
-CustomStepper stepper(8, 9, 10, 11);
+const int ir_pin = A0;
 
 // События
 // enum event {Press, Release, WaitDebounce, WaitHold, WaitLongHold, WaitIdle};
@@ -28,15 +24,36 @@ enum motorState {Idle, RunCW, RunCCW};
 
 enum motorState mtrState = Idle;
 
-enum irEvent {Close, Open, Stop};
+enum motorManagerMode {Auto, Manual, Calibration};
 
-unsigned long pressTimestamp;
+enum motorManagerMode mtrMngMode = Manual;
 
-const unsigned long minus = 16753245;
-const unsigned long neutral = 16736925;
-const unsigned long plus = 16769565;
+enum irEvent {Close, Open, Stop, SwitchMenu};
+
+// unsigned long pressTimestamp;
+
+const unsigned long minus = 16769055;
+const unsigned long pause = 16761405;
+const unsigned long plus = 16754775;
+const unsigned long next = 16712445;
+
+IRrecv irrecv(ir_pin);
+decode_results results;
+
+int mtr_min=0;
+// количество шагов для полного закрытия шторы
+int mtr_max=7185;
+int mtr_cur;
+
+// Указываем пины, к которым подключен драйвер шагового двигателя
+CustomStepper stepper(8, 9, 10, 11);
 
 void setup() {
+  Serial.print(eeprom_read_dword(0));
+  if (eeprom_read_dword(0) != 0) {
+    _EEGET(mtr_max, 0);
+  }
+
   // Устанавливаем кол-во оборотов в минуту
   stepper.setRPM(12);
   // Устанавливаем кол-во шагов на полный оборот. Максимальное значение 4075.7728395
@@ -46,20 +63,74 @@ void setup() {
   stepper.rotate();
 
   irrecv.enableIRIn();
-  pinMode(A0, INPUT);
+  pinMode(ir_pin, INPUT);
+
 
   Serial.begin(9600);
 }
 
 void loop() {
   controlLoop();
-
   motorManagerLoop();
 }
 
 void motorManagerLoop() {
+  if (mtrMngMode == Calibration) {
+
+    // _EEPUT(0, mtr_cur);
+  } else if (mtrMngMode == Manual) {
+    
+  }
   stepper.run();
 }
+
+void doEvent(enum irEvent e) {
+  switch (e) {
+    case Close: {
+      if (mtrState != RunCCW) {
+        stepper.setDirection(CCW);
+        stepper.rotate();
+        mtrState = RunCCW;
+        Serial.print("Close\n");
+      }
+      break;
+    }
+    case Open: {
+      if (mtrState != RunCW) {
+        stepper.setDirection(CW);
+        stepper.rotate();
+        mtrState = RunCW;
+        Serial.print("Open\n");
+      }
+      break;
+    }
+    case Stop: {
+      if (mtrMngMode == Calibration) {
+        _EEPUT(0, mtr_cur);
+      }
+      if (mtrState != Idle) {
+        stepper.setDirection(STOP);
+        mtrState = Idle;
+        Serial.print("Stop\n");
+      }
+      break;
+    }
+    case SwitchMenu: {
+      if (mtrMngMode == Auto) {
+        mtrMngMode = Manual;
+        Serial.print("Manual mode\n");
+      } else if (mtrMngMode == Manual) {
+        mtrMngMode = Calibration;
+        Serial.print("Calibration mode\n");
+      } else if (mtrMngMode == Calibration) {
+        mtrMngMode = Auto;
+        Serial.print("Auto mode\n");
+      }
+      break;
+    }
+  }
+}
+
 
 void controlLoop() {
     if (irrecv.decode(&results)) {
@@ -72,9 +143,11 @@ void controlLoop() {
         case minus:
           doEvent(Close);
           break;
-        case neutral:
+        case pause:
           doEvent(Stop);
           break;
+        case next:
+          doEvent(SwitchMenu);
       }
       irrecv.resume();
     }
@@ -154,35 +227,3 @@ void controlLoop() {
 //       break;
 //   }
 // }
-
-
-void doEvent(enum irEvent e) {
-  switch (e) {
-    case Close: {
-      if (mtrState != RunCCW) {
-        stepper.setDirection(CCW);
-        stepper.rotate();
-        mtrState = RunCCW;
-        Serial.print("Close\n");
-      }
-      break;
-    }
-    case Open: {
-      if (mtrState != RunCW) {
-        stepper.setDirection(CW);
-        stepper.rotate();
-        mtrState = RunCW;
-        Serial.print("Open\n");
-      }
-      break;
-    }
-    case Stop: {
-      if (mtrState != Idle) {
-        stepper.setDirection(STOP);
-        mtrState = Idle;
-        Serial.print("Stop\n");
-      }
-      break;
-    }
-  }
-}
