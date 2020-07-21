@@ -40,16 +40,20 @@ const unsigned long next = 16712445;
 IRrecv irrecv(ir_pin);
 decode_results results;
 
-int mtr_min=0;
-// количество шагов для полного закрытия шторы
-int mtr_max=7185;
-int mtr_cur;
+float mtr_min=0;
+// количество оборотов до полного закрытия шторы
+float mtr_max=3;
+float mtr_cur;
+
+// int min_degress = 18;
+int min_degress = 180;
+float min_step = (float)min_degress / 360.0;
 
 // Указываем пины, к которым подключен драйвер шагового двигателя
 CustomStepper stepper(8, 9, 10, 11);
 
 void setup() {
-  if (eeprom_read_dword(0) != 0) {
+  if (eeprom_read_float(0) != 0) {
     _EEGET(mtr_max, 0);
   }
 
@@ -83,10 +87,10 @@ void motorManagerLoop() {
   } else if (mtrMngMode == Manual && stepper.isDone()) {
     switch (mtrState) {
       case RunCCW:
-        mtr_cur++;
+        mtr_cur += min_step;
         break;
       case RunCW:
-        mtr_cur--;
+        mtr_cur -= min_step;
         break;
     }
     if (mtr_cur > mtr_max) {
@@ -94,9 +98,14 @@ void motorManagerLoop() {
       mtr_cur = mtr_max;
     } else  if (mtr_cur < mtr_min) {
       doEvent(Stop);
-      mtr_cur = mtr_min;  
-    } else if (mtrState != Idle) {
-      stepper.rotate(1);
+      mtr_cur = mtr_min; 
+    }
+    if (mtrState != Idle) {
+      Serial.print(mtr_cur);
+      Serial.print("\n");
+      stepper.rotateDegrees(min_degress);
+    } else {
+      stepper.setDirection(STOP);
     }
   }
   stepper.run();
@@ -122,7 +131,6 @@ void doEvent(enum irEvent e) {
     }
     case Stop: {
       if (mtrState != Idle) {
-        stepper.setDirection(STOP);
         mtrState = Idle;
         Serial.print("Stop\n");
       }
