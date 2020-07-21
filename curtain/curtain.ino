@@ -49,10 +49,13 @@ int mtr_cur;
 CustomStepper stepper(8, 9, 10, 11);
 
 void setup() {
-  Serial.print(eeprom_read_dword(0));
   if (eeprom_read_dword(0) != 0) {
     _EEGET(mtr_max, 0);
   }
+
+  Serial.print(mtr_max);
+
+  mtr_cur = mtr_min;
 
   // Устанавливаем кол-во оборотов в минуту
   stepper.setRPM(12);
@@ -64,7 +67,6 @@ void setup() {
 
   irrecv.enableIRIn();
   pinMode(ir_pin, INPUT);
-
 
   Serial.begin(9600);
 }
@@ -78,8 +80,24 @@ void motorManagerLoop() {
   if (mtrMngMode == Calibration) {
 
     // _EEPUT(0, mtr_cur);
-  } else if (mtrMngMode == Manual) {
-    
+  } else if (mtrMngMode == Manual && stepper.isDone()) {
+    switch (mtrState) {
+      case RunCCW:
+        mtr_cur++;
+        break;
+      case RunCW:
+        mtr_cur--;
+        break;
+    }
+    if (mtr_cur > mtr_max) {
+      doEvent(Stop);
+      mtr_cur = mtr_max;
+    } else  if (mtr_cur < mtr_min) {
+      doEvent(Stop);
+      mtr_cur = mtr_min;  
+    } else if (mtrState != Idle) {
+      stepper.rotate(1);
+    }
   }
   stepper.run();
 }
@@ -89,7 +107,6 @@ void doEvent(enum irEvent e) {
     case Close: {
       if (mtrState != RunCCW) {
         stepper.setDirection(CCW);
-        stepper.rotate();
         mtrState = RunCCW;
         Serial.print("Close\n");
       }
@@ -98,16 +115,12 @@ void doEvent(enum irEvent e) {
     case Open: {
       if (mtrState != RunCW) {
         stepper.setDirection(CW);
-        stepper.rotate();
         mtrState = RunCW;
         Serial.print("Open\n");
       }
       break;
     }
     case Stop: {
-      if (mtrMngMode == Calibration) {
-        _EEPUT(0, mtr_cur);
-      }
       if (mtrState != Idle) {
         stepper.setDirection(STOP);
         mtrState = Idle;
