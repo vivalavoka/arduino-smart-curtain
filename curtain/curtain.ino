@@ -45,7 +45,7 @@ const unsigned long next = 16712445;
 IRrecv irrecv(ir_pin);
 decode_results results;
 
-float mtr_min=0;
+float mtr_min=1.0;
 // количество оборотов до полного закрытия шторы
 float mtr_max=2.0;
 float mtr_cur;
@@ -58,11 +58,16 @@ float min_step = (float)min_degress / 360.0;
 CustomStepper stepper(8, 9, 10, 11);
 
 void setup() {
-  _EEGET(mtr_max, 0);
+  Serial.begin(9600);
+  Serial.print("\n");
+
+  mtr_max = eeprom_read_float(0);
+  mtr_cur = eeprom_read_float(4);
 
   Serial.print(mtr_max);
-
-  mtr_cur = mtr_min;
+  Serial.print("\n");
+  Serial.print(mtr_cur);
+  Serial.print("\n");
 
   // Устанавливаем кол-во оборотов в минуту
   stepper.setRPM(12);
@@ -74,8 +79,6 @@ void setup() {
 
   irrecv.enableIRIn();
   pinMode(ir_pin, INPUT);
-
-  Serial.begin(9600);
 }
 
 void loop() {
@@ -114,7 +117,7 @@ void calibrationLoop() {
         Serial.print(mtr_cur);
         Serial.print("\n");
         mtr_max = mtr_cur;
-        _EEPUT(0, mtr_max);
+        eeprom_update_float(0, mtr_max);
         doEvent(SwitchMenu);
         calibMtrState = Idle;
       }
@@ -145,12 +148,16 @@ void autoLoop() {
     if (mtrState == Up && prevMtrState != Up) {
       stepper.setDirection(_UP);
       prevMtrState = mtrState;
+      eeprom_update_float(4, mtr_cur);
     } else if (mtrState == Down && prevMtrState != Down) {
       stepper.setDirection(_DOWN);
       prevMtrState = mtrState;
+      eeprom_update_float(4, mtr_cur);
     } else if (mtrState == Idle && prevMtrState != Idle) {
       stepper.setDirection(STOP);
       prevMtrState = mtrState;
+      eeprom_update_float(4, mtr_cur);
+      Serial.print(eeprom_read_float(5));
       return;
     }
 
@@ -172,7 +179,7 @@ void autoLoop() {
       Serial.print(mtr_cur);
       Serial.print(" go min ");
       Serial.print(mtr_min);
-      mtr_cur = mtr_min; 
+      mtr_cur = mtr_min;
       doEvent(Stop);
       return;
     }
