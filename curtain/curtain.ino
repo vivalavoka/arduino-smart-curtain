@@ -23,6 +23,7 @@ const int ir_pin = A0;
 enum motorState {Idle, RunCW, RunCCW};
 
 enum motorState mtrState = Idle;
+enum motorState prevMtrState = Idle;
 
 enum motorManagerMode {Auto, Manual, Calibration};
 
@@ -46,7 +47,7 @@ float mtr_max=3;
 float mtr_cur;
 
 // int min_degress = 18;
-int min_degress = 180;
+int min_degress = 18;
 float min_step = (float)min_degress / 360.0;
 
 // Указываем пины, к которым подключен драйвер шагового двигателя
@@ -83,39 +84,58 @@ void loop() {
 void motorManagerLoop() {
   if (mtrMngMode == Calibration) {
 
-    // _EEPUT(0, mtr_cur);
-  } else if (mtrMngMode == Manual && stepper.isDone()) {
-    switch (mtrState) {
-      case RunCCW:
-        mtr_cur += min_step;
-        break;
-      case RunCW:
-        mtr_cur -= min_step;
-        break;
-    }
-    if (mtr_cur > mtr_max) {
-      doEvent(Stop);
-      mtr_cur = mtr_max;
-    } else  if (mtr_cur < mtr_min) {
-      doEvent(Stop);
-      mtr_cur = mtr_min; 
-    }
-    if (mtrState != Idle) {
-      Serial.print(mtr_cur);
-      Serial.print("\n");
-      stepper.rotateDegrees(min_degress);
-    } else {
-      stepper.setDirection(STOP);
-    }
+  } else if (mtrMngMode == Manual) {
+    manualLoop();
   }
   stepper.run();
+}
+
+void manualLoop() {
+  if (mtrState == Idle && prevMtrState == Idle) {
+    return;
+  }
+  if (stepper.isDone()) {
+    // Для разовой подачи команды на смену направления
+    if (mtrState == RunCW && prevMtrState != RunCW) {
+      stepper.setDirection(CW);
+      prevMtrState = mtrState;
+    } else if (mtrState == RunCCW && prevMtrState != RunCCW) {
+      stepper.setDirection(CCW);
+      prevMtrState = mtrState;
+    } else if (mtrState == Idle && prevMtrState != Idle) {
+      stepper.setDirection(STOP);
+      prevMtrState = mtrState;
+      return;
+    }
+
+    // Изменение текущего шага мотора
+    if (mtrState == RunCW) {
+      mtr_cur += min_step;
+    } else if (mtrState == RunCCW) {
+      mtr_cur -= min_step;
+    }
+
+    if (mtr_cur > mtr_max) {
+      mtr_cur = mtr_max;
+      doEvent(Stop);
+      return;
+    } else if (mtr_cur < mtr_min) {
+      mtr_cur = mtr_min; 
+      doEvent(Stop);
+      return;
+    }
+
+    Serial.print(mtr_cur);
+    Serial.print("\n");
+    stepper.rotateDegrees(min_degress);
+  }
 }
 
 void doEvent(enum irEvent e) {
   switch (e) {
     case Close: {
       if (mtrState != RunCCW) {
-        stepper.setDirection(CCW);
+        prevMtrState = mtrState;
         mtrState = RunCCW;
         Serial.print("Close\n");
       }
@@ -123,7 +143,7 @@ void doEvent(enum irEvent e) {
     }
     case Open: {
       if (mtrState != RunCW) {
-        stepper.setDirection(CW);
+        prevMtrState = mtrState;
         mtrState = RunCW;
         Serial.print("Open\n");
       }
@@ -131,6 +151,7 @@ void doEvent(enum irEvent e) {
     }
     case Stop: {
       if (mtrState != Idle) {
+        prevMtrState = mtrState;
         mtrState = Idle;
         Serial.print("Stop\n");
       }
