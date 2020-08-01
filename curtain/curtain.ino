@@ -33,13 +33,14 @@ struct MotorStruct {
   float maxPosition;
 };
 
-MotorStruct firstMtr;
-
 // Адрес в памяти для хранения данных по первому мотору
 MotorStruct EEMEM firstMotorAddr;
+MotorStruct firstMtr;
 
 // Адрес в памяти для хранения данных по второму мотору
 MotorStruct EEMEM secondMotorAddr;
+MotorStruct secondMtr;
+
 
 const int ir_pin = A0;
 enum irEvent {Close, Open, Stop, SwitchMenu};
@@ -78,6 +79,13 @@ bool similar(float A, float B, float epsilon = 0.005f) {
   return (fabs(A - B) < epsilon);
 }
 
+void printStructList() {
+  Serial.print("First Motor:\n");
+  printStruct(firstMtr);
+  Serial.print("Second Motor:\n");
+  printStruct(secondMtr);
+}
+
 void printStruct(MotorStruct mtr) {
   Serial.print("Active: ");
   Serial.print(mtr.active);
@@ -97,11 +105,7 @@ void printStruct(MotorStruct mtr) {
   Serial.print("\n");
 }
 
-void setup() {
-  Serial.begin(9600);
-  Serial.print("\n");
-
-  // Первый запуск
+void initMotors() {
   if (EEPROM.read(INIT_ADDR) != INIT_KEY) {
     // Записали ключ
     EEPROM.write(INIT_ADDR, INIT_KEY);
@@ -114,19 +118,34 @@ void setup() {
     firstMtr.maxPosition = DEFAULT_MAX_POSITION;
 
     EEPROM.put((int)&firstMotorAddr, firstMtr);
-    // eeprom_write_block((void*)&firstMtr, (const void*)&firstMotorAddr, sizeof(firstMtr));
+
+    secondMtr.active = true;
+    secondMtr.curState = Idle;
+    secondMtr.prevState = Idle;
+    secondMtr.curPosition = MIN_POSITION;
+    secondMtr.maxPosition = DEFAULT_MAX_POSITION;
+
+    EEPROM.put((int)&secondMotorAddr, secondMtr);
   }
+}
 
+void setup() {
+  Serial.begin(9600);
+  Serial.print("\n");
+
+  initMotors();
+
+  // initMotot((int)&firstMotorAddr, firstMtr);
   EEPROM.get((int)&firstMotorAddr, firstMtr);
-  // eeprom_read_block((void*)&firstMtr, (const void*)&firstMotorAddr, sizeof(firstMtr));
-
   firstMtr.curState = Idle;
   firstMtr.prevState = Idle;
 
-  printStruct(firstMtr);
-  // firstMtr.active = (bool)EEPROM.read(0);
-  // EEPROM.get(1, firstMtr.maxPosition);
-  // EEPROM.get(5, firstMtr.curPosition);
+  EEPROM.get((int)&secondMotorAddr, secondMtr);
+  secondMtr.curState = Idle;
+  secondMtr.prevState = Idle;
+
+  // initMotot((int)&secondMotorAddr, secondMtr);
+  printStructList();
 
   // Устанавливаем кол-во оборотов в минуту
   stepper.setRPM(12);
@@ -308,7 +327,7 @@ void controlLoop() {
         case next:
           doEvent(SwitchMenu);
         case zero:
-          printStruct(firstMtr);
+          printStructList();
           break;
       }
     }
