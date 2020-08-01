@@ -164,23 +164,25 @@ void loop() {
 
 void motorManagerLoop() {
   for (int i = 0; i < MOTOR_COUNT; i++) {
-    if (mtrMngMode == Calibration) {
-      calibrationLoop(&motorList[0], &stepperList[0]);
-    } else if (mtrMngMode == Auto) {
-      autoLoop(&motorList[0], &stepperList[0]);
-      // autoLoop(&motorList[1], &stepperList[1]);
+    if (!motorList[i].active) {
+      continue;
     }
+
+    if (mtrMngMode == Calibration) {
+      calibrationLoop(&motorList[i], &stepperList[i]);
+    } else if (mtrMngMode == Auto) {
+      autoLoop(&motorList[i], &stepperList[i]);
+    }
+
+    stepperList[i].run();
   }
-  // for (int i = 0; i < (sizeof(stepperList)/sizeof(*stepperList)); i++) {
-    stepperList[0].run();
-    stepperList[1].run();
-  // }
 }
 
 void calibrationLoop(MotorStruct *mtr, CustomStepper *stepper) {
-  if (mtr->curState == Idle && mtr->prevState == Idle) {
+  if ((mtr->curState == Idle && mtr->prevState == Idle) || !mtr->active) {
     return;
   }
+
   if (stepper->isDone()) {
     // Для разовой подачи команды на смену направления
     if (mtr->curState == Up && mtr->prevState != Up) {
@@ -221,10 +223,10 @@ void calibrationLoop(MotorStruct *mtr, CustomStepper *stepper) {
 }
 
 void autoLoop(MotorStruct *mtr, CustomStepper *stepper) {
-
-  if (mtr->curState == Idle && mtr->prevState == Idle) {
+  if ((mtr->curState == Idle && mtr->prevState == Idle) || !mtr->active) {
     return;
   }
+
   if (stepper->isDone()) {
     // Для разовой подачи команды на смену направления
     if (mtr->curState == Up && mtr->prevState != Up) {
@@ -315,6 +317,7 @@ void doEvent(enum irEvent e, MotorStruct *mtr) {
     }
     case MotorSwitch: {
       for (int i = 0; i < MOTOR_COUNT; i++) {
+        doEvent(Stop, &motorList[i]);
         motorList[i].active = !motorList[i].active;
       }
       EEPROM.put((int)&motorList_addr, motorList);
@@ -370,7 +373,7 @@ void controlManagerLoop() {
 }
 
 void controlLoop(MotorStruct *mtr, unsigned long value) {
-  if (mtrMngMode == Auto || mtrMngMode == Calibration) {
+  if (mtr->active) {
     switch (value) {
       case plus:
         mtr->curState == Up ? doEvent(Stop, mtr) : doEvent(Open, mtr);
