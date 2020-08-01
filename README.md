@@ -26,3 +26,9 @@ Remote curtains control by IR receiver
 
 **Compile && Upload && Logs**
 `arduino-cli compile ./curtain && arduino-cli upload ./curtain && cat < /dev/ttyACM0`
+
+
+## Полезные ссылки:
+
+- [EEPROM.h](https://alexgyver.ru/lessons/eeprom/)
+- [Library](https://www.arduino.cc/en/Hacking/libraryTutorial)
