@@ -72,8 +72,9 @@ int min_degress = 18;
 float min_step = (float)min_degress / 360.0;
 
 // Указываем пины, к которым подключен драйвера шаговых двигателей
-// CustomStepper firstStepper(8, 9, 10, 11);
-CustomStepper firstStepper(4, 5, 6, 7);
+CustomStepper firstStepper(8, 9, 10, 11);
+CustomStepper secondStepper(4, 5, 6, 7);
+CustomStepper stepperList[] = {firstStepper, secondStepper};
 
 // CustomStepper stepperList[MOTOR_COUNT] = {firstStepper};
 
@@ -144,11 +145,11 @@ void setup() {
 
   // for (int i = 0; i < MOTOR_COUNT; i++) {
     // Устанавливаем кол-во оборотов в минуту
-    firstStepper.setRPM(12);
+    stepperList[1].setRPM(12);
     // Устанавливаем кол-во шагов на полный оборот. Максимальное значение 4075.7728395
-    firstStepper.setSPR(4075.7728395);
-    firstStepper.setDirection(STOP);
-    firstStepper.rotate();
+    stepperList[1].setSPR(4075.7728395);
+    stepperList[1].setDirection(STOP);
+    stepperList[1].rotate();
   // }
 
   irrecv.enableIRIn();
@@ -169,7 +170,7 @@ void motorManagerLoop() {
     }
   }
   // for (int i = 0; i < MOTOR_COUNT; i++) {
-    firstStepper.run();
+    stepperList[1].run();
   // }
 }
 
@@ -177,18 +178,18 @@ void calibrationLoop() {
   if (motorList[0].curState == Idle && motorList[0].prevState == Idle) {
     return;
   }
-  // if (stepperList[0].isDone()) {
+  // if (stepperList[1].isDone()) {
   //   // Для разовой подачи команды на смену направления
   //   if (motorList[0].curState == Up && motorList[0].prevState != Up) {
-  //     stepperList[0].setDirection(_UP);
+  //     stepperList[1].setDirection(_UP);
   //     motorList[0].prevState = motorList[0].curState;
   //   } else if (motorList[0].curState == Down && motorList[0].prevState != Down) {
-  //     stepperList[0].setDirection(_DOWN);
+  //     stepperList[1].setDirection(_DOWN);
   //     motorList[0].curPosition = MIN_POSITION;
 
   //     motorList[0].prevState = motorList[0].curState;
   //   } else if (motorList[0].curState == Idle && motorList[0].prevState != Idle) {
-  //     stepperList[0].setDirection(STOP);
+  //     stepperList[1].setDirection(STOP);
   //     if (motorList[0].prevState == Down) {
   //       motorList[0].maxPosition = motorList[0].curPosition;
   //       Serial.print("Save max turnover: ");
@@ -212,7 +213,7 @@ void calibrationLoop() {
 
   //   Serial.print(motorList[0].curPosition);
   //   Serial.print("\n");
-  //   stepperList[0].rotateDegrees(min_degress);
+  //   stepperList[1].rotateDegrees(min_degress);
   // }
 }
 
@@ -221,18 +222,18 @@ void autoLoop(MotorStruct *mtr) {
   if (mtr->curState == Idle && mtr->prevState == Idle) {
     return;
   }
-  if (firstStepper.isDone()) {
+  if (stepperList[1].isDone()) {
     // Для разовой подачи команды на смену направления
     if (mtr->curState == Up && mtr->prevState != Up) {
-      firstStepper.setDirection(_UP);
+      stepperList[1].setDirection(_UP);
       mtr->prevState = mtr->curState;
       EEPROM.put((int)&motorList_addr, motorList);
     } else if (mtr->curState == Down && mtr->prevState != Down) {
-      firstStepper.setDirection(_DOWN);
+      stepperList[1].setDirection(_DOWN);
       mtr->prevState = mtr->curState;
       EEPROM.put((int)&motorList_addr, motorList);
     } else if (mtr->curState == Idle && mtr->prevState != Idle) {
-      firstStepper.setDirection(STOP);
+      stepperList[1].setDirection(STOP);
       mtr->prevState = mtr->curState;
 
       EEPROM.put((int)&motorList_addr, motorList);
@@ -265,7 +266,7 @@ void autoLoop(MotorStruct *mtr) {
 
     Serial.print(mtr->curPosition);
     Serial.print("\n");
-    firstStepper.rotateDegrees(min_degress);
+    stepperList[1].rotateDegrees(min_degress);
   }
 }
 
