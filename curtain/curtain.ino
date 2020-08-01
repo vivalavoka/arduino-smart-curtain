@@ -50,12 +50,17 @@ float mtr_min=1.0;
 float mtr_max=2.0;
 float mtr_cur;
 
-// int min_degress = 18;
+// 18;
 int min_degress = 18;
+// 0.05
 float min_step = (float)min_degress / 360.0;
 
 // Указываем пины, к которым подключен драйвер шагового двигателя
 CustomStepper stepper(8, 9, 10, 11);
+
+bool similar(float A, float B, float epsilon = 0.005f) {
+  return (fabs(A - B) < epsilon);
+}
 
 void setup() {
   Serial.begin(9600);
@@ -157,7 +162,23 @@ void autoLoop() {
       stepper.setDirection(STOP);
       prevMtrState = mtrState;
       eeprom_update_float(4, mtr_cur);
-      Serial.print(eeprom_read_float(5));
+      return;
+    }
+
+    // Проверка на остановку
+    if (mtrState == Up && similar(mtr_cur, mtr_min)) {
+      Serial.print(mtr_cur);
+      Serial.print(" go min ");
+      Serial.print(mtr_min);
+      mtr_cur = mtr_min;
+      doEvent(Stop);
+      return;
+    } else if (mtrState == Down && similar(mtr_cur, mtr_max)) {
+      Serial.print(mtr_cur);
+      Serial.print(" go max ");
+      Serial.print(mtr_max);
+      mtr_cur = mtr_max;
+      doEvent(Stop);
       return;
     }
 
@@ -166,22 +187,6 @@ void autoLoop() {
       mtr_cur -= min_step;
     } else if (mtrState == Down) {
       mtr_cur += min_step;
-    }
-
-    if (mtr_cur > mtr_max) {
-      Serial.print(mtr_cur);
-      Serial.print(" go max ");
-      Serial.print(mtr_max);
-      mtr_cur = mtr_max;
-      doEvent(Stop);
-      return;
-    } else if (mtr_cur < mtr_min) {
-      Serial.print(mtr_cur);
-      Serial.print(" go min ");
-      Serial.print(mtr_min);
-      mtr_cur = mtr_min;
-      doEvent(Stop);
-      return;
     }
 
     Serial.print(mtr_cur);
