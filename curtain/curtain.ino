@@ -105,28 +105,26 @@ void calibrationLoop() {
     return;
   }
   if (stepper.isDone()) {
-
     // Для разовой подачи команды на смену направления
     if (mtrState == Up && prevMtrState != Up) {
       stepper.setDirection(_UP);
       prevMtrState = mtrState;
     } else if (mtrState == Down && prevMtrState != Down) {
       stepper.setDirection(_DOWN);
+      mtr_cur = mtr_min;
+      eeprom_update_float(4, mtr_cur);
       prevMtrState = mtrState;
     } else if (mtrState == Idle && prevMtrState != Idle) {
-      if (prevMtrState == Up) {
-        mtr_cur = mtr_min;
-        calibMtrState = Up;
-      } else if (prevMtrState == Down) {
-        Serial.print("Save max turnover: ");
-        Serial.print(mtr_cur);
-        Serial.print("\n");
+      stepper.setDirection(STOP);
+      if (prevMtrState == Down) {
         mtr_max = mtr_cur;
+        Serial.print("Save max turnover: ");
+        Serial.print(mtr_max);
+        Serial.print("\n");
         eeprom_update_float(0, mtr_max);
         doEvent(SwitchMenu);
-        calibMtrState = Idle;
+        // calibMtrState = Idle;
       }
-      stepper.setDirection(STOP);
       prevMtrState = mtrState;
       return;
     }
@@ -241,35 +239,19 @@ void controlLoop() {
   if (irrecv.decode(&results)) {
     Serial.print(results.value);
     Serial.print("\n");
-    if (mtrMngMode == Auto) {
+    if (mtrMngMode == Auto || mtrMngMode == Calibration) {
       switch (results.value) {
         case plus:
-          doEvent(Open);
+          mtrState == Up ? doEvent(Stop) : doEvent(Open);
           break;
         case minus:
-          doEvent(Close);
+          mtrState == Down ? doEvent(Stop) : doEvent(Close);
           break;
         case pause:
           doEvent(Stop);
           break;
         case next:
           doEvent(SwitchMenu);
-      }
-    } else if (mtrMngMode == Calibration) {
-      switch (results.value) {
-        case plus:
-          if (calibMtrState == Idle) {
-            doEvent(Open);
-          }
-          break;
-        case minus:
-          if (calibMtrState == Up) {
-            doEvent(Close);
-          }
-          break;
-        case pause:
-          doEvent(Stop);
-          break;
       }
     }
     irrecv.resume();
