@@ -1,17 +1,19 @@
 // Адрес ячейки
 #define INIT_ADDR 1023
 // Ключ первого запуска. 0-254
-// #define INIT_KEY 253
-#define INIT_KEY 254
+#define INIT_KEY 253
+// #define INIT_KEY 254
 
-// Дребезг, случайные замыкания
-#define button_debounce 20
-// Клик
-#define button_hold 250
-// Долгое нажатие
-#define button_long 3000
-// Ошибка, на кнопку сели
-#define button_idle 5000
+#define MOTOR_COUNT 2
+
+// // Дребезг, случайные замыкания
+// #define button_debounce 20
+// // Клик
+// #define button_hold 250
+// // Долгое нажатие
+// #define button_long 3000
+// // Ошибка, на кнопку сели
+// #define button_idle 5000
 
 #include <EEPROM.h>
 #include <CustomStepper.h>
@@ -33,14 +35,12 @@ struct MotorStruct {
   float maxPosition;
 };
 
-// Адрес в памяти для хранения данных по первому мотору
-MotorStruct EEMEM firstMotorAddr;
 MotorStruct firstMtr;
-
-// Адрес в памяти для хранения данных по второму мотору
-MotorStruct EEMEM secondMotorAddr;
 MotorStruct secondMtr;
 
+MotorStruct EEMEM motorList_addr[MOTOR_COUNT];
+
+MotorStruct motorList[] = {firstMtr, secondMtr};
 
 const int ir_pin = A0;
 enum irEvent {Close, Open, Stop, SwitchMenu};
@@ -66,14 +66,16 @@ enum motorManagerMode {Auto, Calibration};
 
 enum motorManagerMode mtrMngMode = Auto;
 
-
 // 18;
 int min_degress = 18;
 // 0.05
 float min_step = (float)min_degress / 360.0;
 
-// Указываем пины, к которым подключен драйвер шагового двигателя
-CustomStepper stepper(8, 9, 10, 11);
+// Указываем пины, к которым подключен драйвера шаговых двигателей
+// CustomStepper firstStepper(8, 9, 10, 11);
+CustomStepper firstStepper(4, 5, 6, 7);
+
+// CustomStepper stepperList[MOTOR_COUNT] = {firstStepper};
 
 bool similar(float A, float B, float epsilon = 0.005f) {
   return (fabs(A - B) < epsilon);
@@ -81,9 +83,9 @@ bool similar(float A, float B, float epsilon = 0.005f) {
 
 void printStructList() {
   Serial.print("First Motor:\n");
-  printStruct(firstMtr);
+  printStruct(motorList[0]);
   Serial.print("Second Motor:\n");
-  printStruct(secondMtr);
+  printStruct(motorList[1]);
 }
 
 void printStruct(MotorStruct mtr) {
@@ -111,21 +113,16 @@ void initMotors() {
     EEPROM.write(INIT_ADDR, INIT_KEY);
 
     Serial.print("First init\n");
-    firstMtr.active = true;
-    firstMtr.curState = Idle;
-    firstMtr.prevState = Idle;
-    firstMtr.curPosition = MIN_POSITION;
-    firstMtr.maxPosition = DEFAULT_MAX_POSITION;
 
-    EEPROM.put((int)&firstMotorAddr, firstMtr);
+    for (int i = 0; i < MOTOR_COUNT; i++) {
+      motorList[i].active = true;
+      motorList[i].curState = Idle;
+      motorList[i].prevState = Idle;
+      motorList[i].curPosition = MIN_POSITION;
+      motorList[i].maxPosition = DEFAULT_MAX_POSITION;
+    }
 
-    secondMtr.active = true;
-    secondMtr.curState = Idle;
-    secondMtr.prevState = Idle;
-    secondMtr.curPosition = MIN_POSITION;
-    secondMtr.maxPosition = DEFAULT_MAX_POSITION;
-
-    EEPROM.put((int)&secondMotorAddr, secondMtr);
+    EEPROM.put((int)&motorList_addr, motorList);
   }
 }
 
@@ -136,24 +133,23 @@ void setup() {
   initMotors();
 
   // initMotot((int)&firstMotorAddr, firstMtr);
-  EEPROM.get((int)&firstMotorAddr, firstMtr);
-  firstMtr.curState = Idle;
-  firstMtr.prevState = Idle;
+  EEPROM.get((int)&motorList_addr, motorList);
 
-  EEPROM.get((int)&secondMotorAddr, secondMtr);
-  secondMtr.curState = Idle;
-  secondMtr.prevState = Idle;
+  for (int i = 0; i < MOTOR_COUNT; i++) {
+    motorList[i].curState = Idle;
+    motorList[i].prevState = Idle;
+  }
 
-  // initMotot((int)&secondMotorAddr, secondMtr);
   printStructList();
 
-  // Устанавливаем кол-во оборотов в минуту
-  stepper.setRPM(12);
-  // Устанавливаем кол-во шагов на полный оборот. Максимальное значение 4075.7728395
-  stepper.setSPR(4075.7728395);
-
-  stepper.setDirection(STOP);
-  stepper.rotate();
+  // for (int i = 0; i < MOTOR_COUNT; i++) {
+    // Устанавливаем кол-во оборотов в минуту
+    firstStepper.setRPM(12);
+    // Устанавливаем кол-во шагов на полный оборот. Максимальное значение 4075.7728395
+    firstStepper.setSPR(4075.7728395);
+    firstStepper.setDirection(STOP);
+    firstStepper.rotate();
+  // }
 
   irrecv.enableIRIn();
   pinMode(ir_pin, INPUT);
@@ -168,127 +164,133 @@ void motorManagerLoop() {
   if (mtrMngMode == Calibration) {
     calibrationLoop();
   } else if (mtrMngMode == Auto) {
-    autoLoop();
+    for (int i = 0; i < MOTOR_COUNT; i++) {
+      autoLoop(&motorList[i]);
+    }
   }
-  stepper.run();
+  // for (int i = 0; i < MOTOR_COUNT; i++) {
+    firstStepper.run();
+  // }
 }
 
 void calibrationLoop() {
-  if (firstMtr.curState == Idle && firstMtr.prevState == Idle) {
+  if (motorList[0].curState == Idle && motorList[0].prevState == Idle) {
     return;
   }
-  if (stepper.isDone()) {
-    // Для разовой подачи команды на смену направления
-    if (firstMtr.curState == Up && firstMtr.prevState != Up) {
-      stepper.setDirection(_UP);
-      firstMtr.prevState = firstMtr.curState;
-    } else if (firstMtr.curState == Down && firstMtr.prevState != Down) {
-      stepper.setDirection(_DOWN);
-      firstMtr.curPosition = MIN_POSITION;
+  // if (stepperList[0].isDone()) {
+  //   // Для разовой подачи команды на смену направления
+  //   if (motorList[0].curState == Up && motorList[0].prevState != Up) {
+  //     stepperList[0].setDirection(_UP);
+  //     motorList[0].prevState = motorList[0].curState;
+  //   } else if (motorList[0].curState == Down && motorList[0].prevState != Down) {
+  //     stepperList[0].setDirection(_DOWN);
+  //     motorList[0].curPosition = MIN_POSITION;
 
-      firstMtr.prevState = firstMtr.curState;
-    } else if (firstMtr.curState == Idle && firstMtr.prevState != Idle) {
-      stepper.setDirection(STOP);
-      if (firstMtr.prevState == Down) {
-        firstMtr.maxPosition = firstMtr.curPosition;
-        Serial.print("Save max turnover: ");
-        Serial.print(firstMtr.maxPosition);
-        Serial.print("\n");
+  //     motorList[0].prevState = motorList[0].curState;
+  //   } else if (motorList[0].curState == Idle && motorList[0].prevState != Idle) {
+  //     stepperList[0].setDirection(STOP);
+  //     if (motorList[0].prevState == Down) {
+  //       motorList[0].maxPosition = motorList[0].curPosition;
+  //       Serial.print("Save max turnover: ");
+  //       Serial.print(motorList[0].maxPosition);
+  //       Serial.print("\n");
 
-        EEPROM.put((int)&firstMotorAddr, firstMtr);
+  //       EEPROM.put((int)&motorList_addr, motorList);
 
-        doEvent(SwitchMenu);
-      }
-      firstMtr.prevState = firstMtr.curState;
-      return;
-    }
+  //       doEvent(SwitchMenu, motorList[0]);
+  //     }
+  //     motorList[0].prevState = motorList[0].curState;
+  //     return;
+  //   }
 
-    // Изменение текущего шага мотора
-    if (firstMtr.curState == Up) {
-      firstMtr.curPosition -= min_step;
-    } else if (firstMtr.curState == Down) {
-      firstMtr.curPosition += min_step;
-    }
+  //   // Изменение текущего шага мотора
+  //   if (motorList[0].curState == Up) {
+  //     motorList[0].curPosition -= min_step;
+  //   } else if (motorList[0].curState == Down) {
+  //     motorList[0].curPosition += min_step;
+  //   }
 
-    Serial.print(firstMtr.curPosition);
-    Serial.print("\n");
-    stepper.rotateDegrees(min_degress);
-  }
+  //   Serial.print(motorList[0].curPosition);
+  //   Serial.print("\n");
+  //   stepperList[0].rotateDegrees(min_degress);
+  // }
 }
 
-void autoLoop() {
-  if (firstMtr.curState == Idle && firstMtr.prevState == Idle) {
+void autoLoop(MotorStruct *mtr) {
+
+  if (mtr->curState == Idle && mtr->prevState == Idle) {
     return;
   }
-  if (stepper.isDone()) {
+  if (firstStepper.isDone()) {
     // Для разовой подачи команды на смену направления
-    if (firstMtr.curState == Up && firstMtr.prevState != Up) {
-      stepper.setDirection(_UP);
-      firstMtr.prevState = firstMtr.curState;
-      EEPROM.put((int)&firstMotorAddr, firstMtr);
-    } else if (firstMtr.curState == Down && firstMtr.prevState != Down) {
-      stepper.setDirection(_DOWN);
-      firstMtr.prevState = firstMtr.curState;
-      EEPROM.put((int)&firstMotorAddr, firstMtr);
-    } else if (firstMtr.curState == Idle && firstMtr.prevState != Idle) {
-      stepper.setDirection(STOP);
-      firstMtr.prevState = firstMtr.curState;
-      EEPROM.put((int)&firstMotorAddr, firstMtr);
+    if (mtr->curState == Up && mtr->prevState != Up) {
+      firstStepper.setDirection(_UP);
+      mtr->prevState = mtr->curState;
+      EEPROM.put((int)&motorList_addr, motorList);
+    } else if (mtr->curState == Down && mtr->prevState != Down) {
+      firstStepper.setDirection(_DOWN);
+      mtr->prevState = mtr->curState;
+      EEPROM.put((int)&motorList_addr, motorList);
+    } else if (mtr->curState == Idle && mtr->prevState != Idle) {
+      firstStepper.setDirection(STOP);
+      mtr->prevState = mtr->curState;
+
+      EEPROM.put((int)&motorList_addr, motorList);
       return;
     }
 
     // Проверка на остановку
-    if (firstMtr.curState == Up && similar(firstMtr.curPosition, MIN_POSITION)) {
-      Serial.print(firstMtr.curPosition);
+    if (mtr->curState == Up && similar(mtr->curPosition, MIN_POSITION)) {
+      Serial.print(mtr->curPosition);
       Serial.print(" go min ");
       Serial.print(MIN_POSITION);
-      firstMtr.curPosition = MIN_POSITION;
-      doEvent(Stop);
+      mtr->curPosition = MIN_POSITION;
+      doEvent(Stop, mtr);
       return;
-    } else if (firstMtr.curState == Down && similar(firstMtr.curPosition, firstMtr.maxPosition)) {
-      Serial.print(firstMtr.curPosition);
+    } else if (mtr->curState == Down && similar(mtr->curPosition, mtr->maxPosition)) {
+      Serial.print(mtr->curPosition);
       Serial.print(" go max ");
-      Serial.print(firstMtr.maxPosition);
-      firstMtr.curPosition = firstMtr.maxPosition;
-      doEvent(Stop);
+      Serial.print(mtr->maxPosition);
+      mtr->curPosition = mtr->maxPosition;
+      doEvent(Stop, mtr);
       return;
     }
 
     // Изменение текущего шага мотора
-    if (firstMtr.curState == Up) {
-      firstMtr.curPosition -= min_step;
-    } else if (firstMtr.curState == Down) {
-      firstMtr.curPosition += min_step;
+    if (mtr->curState == Up) {
+      mtr->curPosition -= min_step;
+    } else if (mtr->curState == Down) {
+      mtr->curPosition += min_step;
     }
 
-    Serial.print(firstMtr.curPosition);
+    Serial.print(mtr->curPosition);
     Serial.print("\n");
-    stepper.rotateDegrees(min_degress);
+    firstStepper.rotateDegrees(min_degress);
   }
 }
 
-void doEvent(enum irEvent e) {
+void doEvent(enum irEvent e, MotorStruct *mtr) {
   switch (e) {
     case Close: {
-      if (firstMtr.curState != Down) {
-        firstMtr.prevState = firstMtr.curState;
-        firstMtr.curState = Down;
+      if (mtr->curState != Down) {
+        mtr->prevState = mtr->curState;
+        mtr->curState = Down;
         Serial.print("Close\n");
       }
       break;
     }
     case Open: {
-      if (firstMtr.curState != Up) {
-        firstMtr.prevState = firstMtr.curState;
-        firstMtr.curState = Up;
+      if (mtr->curState != Up) {
+        mtr->prevState = mtr->curState;
+        mtr->curState = Up;
         Serial.print("Open\n");
       }
       break;
     }
     case Stop: {
-      if (firstMtr.curState != Idle) {
-        firstMtr.prevState = firstMtr.curState;
-        firstMtr.curState = Idle;
+      if (mtr->curState != Idle) {
+        mtr->prevState = mtr->curState;
+        mtr->curState = Idle;
         Serial.print("Stop\n");
       }
       break;
@@ -296,8 +298,8 @@ void doEvent(enum irEvent e) {
     case SwitchMenu: {
       if (mtrMngMode == Auto) {
         mtrMngMode = Calibration;
-        if (firstMtr.curState != Idle) {
-          doEvent(Stop);
+        if (mtr->curState != Idle) {
+          doEvent(Stop, mtr);
         }
         Serial.print("Calibration mode\n");
       } else if (mtrMngMode == Calibration) {
@@ -316,16 +318,16 @@ void controlLoop() {
     if (mtrMngMode == Auto || mtrMngMode == Calibration) {
       switch (results.value) {
         case plus:
-          firstMtr.curState == Up ? doEvent(Stop) : doEvent(Open);
+          motorList[0].curState == Up ? doEvent(Stop, &motorList[0]) : doEvent(Open, &motorList[0]);
           break;
         case minus:
-          firstMtr.curState == Down ? doEvent(Stop) : doEvent(Close);
+          motorList[0].curState == Down ? doEvent(Stop, &motorList[0]) : doEvent(Close, &motorList[0]);
           break;
         case pause:
-          doEvent(Stop);
+          doEvent(Stop, &motorList[0]);
           break;
         case next:
-          doEvent(SwitchMenu);
+          doEvent(SwitchMenu, &motorList[0]);
         case zero:
           printStructList();
           break;
