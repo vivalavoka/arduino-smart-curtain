@@ -18,10 +18,13 @@ int min_degress = 18;
 // 0.05
 float min_step = (float)min_degress / 360.0;
 
-Motor::Motor(byte pins[]) {
-    this->_stepper = &CustomStepper::CustomStepper(pins[0], pins[1], pins[2], pins[3]);
+Motor::Motor() {
+    this->_stepper = new CustomStepper(8, 9, 10, 11);
     this->_curState = Idle;
     this->_prevState = Idle;
+    this->_data.active = true;
+    this->_data.curPosition = MIN_POSITION;
+    this->_data.maxPosition = DEFAULT_MAX_POSITION;
 }
 
 void Motor::initData() {

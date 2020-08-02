@@ -44,9 +44,8 @@ enum motorManagerMode {Auto, Calibration};
 
 enum motorManagerMode mtrMngMode = Auto;
 
-byte pins[4] = {8, 9, 10, 11};
 // Указываем пины, к которым подключен драйвера шаговых двигателей
-Motor firstMotor(pins);
+Motor firstMotor;
 
 void printStructList() {
   Serial.print("First Motor:\n");
@@ -286,5 +285,3 @@ void controlLoop(unsigned long value) {
 //       break;
 //   }
 // }
-
-

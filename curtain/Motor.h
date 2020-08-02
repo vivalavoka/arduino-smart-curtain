@@ -21,7 +21,7 @@ class Motor {
     enum motorState _prevState;
 
   public:
-    Motor(byte pins[]);
+    Motor();
     bool isSimilar(float A, float B);
     void initData();
     void initStepper();
