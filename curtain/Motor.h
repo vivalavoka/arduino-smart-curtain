@@ -21,9 +21,9 @@ class Motor {
     enum motorState _prevState;
 
   public:
-    Motor();
+    Motor(byte pinA, byte pinB, byte pinC, byte pinD);
     bool isSimilar(float A, float B);
-    void initData();
+    void initData(bool active);
     void initStepper();
     void print();
     void loop();

@@ -1,7 +1,7 @@
 // Адрес ячейки
 #define INIT_ADDR 1023
 // Ключ первого запуска. 0-254
-#define INIT_KEY 253
+#define INIT_KEY 254
 
 #include "Motor.h"
 
@@ -18,23 +18,20 @@ int min_degress = 18;
 // 0.05
 float min_step = (float)min_degress / 360.0;
 
-Motor::Motor() {
-    this->_stepper = new CustomStepper(8, 9, 10, 11);
+Motor::Motor(byte pinA, byte pinB, byte pinC, byte pinD) {
+    this->_stepper = new CustomStepper(pinA, pinB, pinC, pinD);
     this->_curState = Idle;
     this->_prevState = Idle;
-    this->_data.active = true;
-    this->_data.curPosition = MIN_POSITION;
-    this->_data.maxPosition = DEFAULT_MAX_POSITION;
 }
 
-void Motor::initData() {
+void Motor::initData(bool active) {
    if (EEPROM.read(INIT_ADDR) != INIT_KEY) {
     // Записали ключ
     EEPROM.write(INIT_ADDR, INIT_KEY);
 
     Serial.print("First init\n");
 
-    this->_data.active = true;
+    this->_data.active = active;
     this->_data.curPosition = MIN_POSITION;
     this->_data.maxPosition = DEFAULT_MAX_POSITION;
 
@@ -42,6 +39,7 @@ void Motor::initData() {
   }
 
   EEPROM.get((int)&motorStruct_addr, this->_data);
+  this->_data.active = active;
 }
 
 void Motor::initStepper() {
@@ -134,7 +132,6 @@ void Motor::loop() {
 void Motor::changeState(motorState newState) {
     this->_prevState = this->_curState;
     this->_curState = newState;
-    Serial.print("State changed\n");
 }
 
 bool Motor::isActive() {

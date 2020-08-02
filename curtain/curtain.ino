@@ -1,9 +1,3 @@
-// Адрес ячейки
-#define INIT_ADDR 1023
-// Ключ первого запуска. 0-254
-// #define INIT_KEY 253
-#define INIT_KEY 254
-
 #define MOTOR_COUNT 2
 
 // // Дребезг, случайные замыкания
@@ -45,22 +39,29 @@ enum motorManagerMode {Auto, Calibration};
 enum motorManagerMode mtrMngMode = Auto;
 
 // Указываем пины, к которым подключен драйвера шаговых двигателей
-Motor firstMotor;
+Motor firstMotor(8, 9, 10, 11);
+
+Motor secondMotor(4, 5, 6, 7);
+
+Motor motorList[] = {firstMotor, secondMotor};
 
 void printStructList() {
   Serial.print("First Motor:\n");
-  firstMotor.print();
+  motorList[0].print();
+  Serial.print("Second Motor:\n");
+  motorList[1].print();
 }
 
 void setup() {
   Serial.begin(9600);
   Serial.print("Setup\n");
 
-  firstMotor.initData();
+  for (int i = 0; i < MOTOR_COUNT; i++) {
+    motorList[i].initData(i == 1);
+    motorList[i].initStepper();
+  }
 
   printStructList();
-
-  firstMotor.initStepper();
 
   irrecv.enableIRIn();
   pinMode(ir_pin, INPUT);
@@ -72,7 +73,9 @@ void loop() {
 }
 
 void motorManagerLoop() {
-    firstMotor.loop();
+  for (int i = 0; i < MOTOR_COUNT; i++) {
+    motorList[i].loop();
+  }
     // if (mtrMngMode == Calibration) {
     //   // calibrationLoop(&motorList[i], &stepperList[i]);
     // } else if (mtrMngMode == Auto) {
@@ -124,25 +127,25 @@ void calibrationLoop(MotorStruct *mtr, CustomStepper *stepper) {
   // }
 }
 
-void doEvent(enum irEvent e) {
+void doEvent(enum irEvent e, Motor *mtr) {
   switch (e) {
     case Close: {
-      if (firstMotor.getCurState() != Down) {
-        firstMotor.changeState(Down);
+      if (mtr->getCurState() != Down) {
+        mtr->changeState(Down);
         Serial.print("Close\n");
       }
       break;
     }
     case Open: {
-      if (firstMotor.getCurState() != Up) {
-        firstMotor.changeState(Up);
+      if (mtr->getCurState() != Up) {
+        mtr->changeState(Up);
         Serial.print("Open\n");
       }
       break;
     }
     case Stop: {
-      if (firstMotor.getCurState() != Idle) {
-        firstMotor.changeState(Idle);
+      if (mtr->getCurState() != Idle) {
+        mtr->changeState(Idle);
         Serial.print("Stop\n");
       }
       break;
@@ -150,8 +153,10 @@ void doEvent(enum irEvent e) {
     case MenuSwitch: {
       if (mtrMngMode == Auto) {
         mtrMngMode = Calibration;
-        if (firstMotor.getCurState() != Idle) {
-          doEvent(Stop);
+        for (int i = 0; i < MOTOR_COUNT; i++) {
+          if (motorList[i].getCurState() != Idle) {
+            doEvent(Stop, &motorList[i]);
+          }
         }
         Serial.print("Calibration mode\n");
       } else if (mtrMngMode == Calibration) {
@@ -161,9 +166,12 @@ void doEvent(enum irEvent e) {
       break;
     }
     case MotorSwitch: {
-      doEvent(Stop);
-      firstMotor.toggleActive();
-      firstMotor.saveData();
+      for (int i = 0; i < MOTOR_COUNT; i++) {
+        doEvent(Stop, &motorList[i]);
+        motorList[i].toggleActive();
+        motorList[i].saveData();
+      }
+
       Serial.print("Motor switched\n");
       printStructList();
       break;
@@ -177,18 +185,18 @@ void controlManagerLoop() {
     // Serial.print("\n");
     switch (results.value) {
       case next:
-        doEvent(MenuSwitch);
+        doEvent(MenuSwitch, &motorList[0]);
         break;
       case prev:
-        doEvent(MotorSwitch);
+        doEvent(MotorSwitch, &motorList[0]);
         break;
       case zero:
         printStructList();
         break;
       default: {
-        // for (int i = 0; i < MOTOR_COUNT; i++) {
-          controlLoop(results.value);
-        // }
+        for (int i = 0; i < MOTOR_COUNT; i++) {
+          controlLoop(results.value, &motorList[i]);
+        }
       }
     }
     irrecv.resume();
@@ -215,18 +223,17 @@ void controlManagerLoop() {
   // }
 }
 
-void controlLoop(unsigned long value) {
-  if (firstMotor.isActive()) {
+void controlLoop(unsigned long value, Motor *mtr) {
+  if (mtr->isActive()) {
     switch (value) {
       case plus:
-        Serial.print("Plus");
-        firstMotor.getCurState() == Up ? doEvent(Stop) : doEvent(Open);
+        mtr->getCurState() == Up ? doEvent(Stop, mtr) : doEvent(Open, mtr);
         break;
       case minus:
-        firstMotor.getCurState() == Down ? doEvent(Stop) : doEvent(Close);
+        mtr->getCurState() == Down ? doEvent(Stop, mtr) : doEvent(Close, mtr);
         break;
       case pause:
-        doEvent(Stop);
+        doEvent(Stop, mtr);
         break;
     }
   }
