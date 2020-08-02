@@ -49,7 +49,7 @@ void Motor::initStepper() {
     this->_stepper->setRPM(12);
     // Устанавливаем кол-во шагов на полный оборот. Максимальное значение 4075.7728395
     this->_stepper->setSPR(4075.7728395);
-    this->_stepper->setDirection(_UP);
+    this->_stepper->setDirection(STOP);
     this->_stepper->rotate();
 }
 
