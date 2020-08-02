@@ -11,8 +11,6 @@ const float MIN_POSITION=1.0;
 // количество оборотов до полного закрытия шторы
 const float DEFAULT_MAX_POSITION=2.0;
 
-CustomStepper stepper(8,9,10,11);
-
 MotorStruct EEMEM motorStruct_addr;
 
 // 18;
@@ -21,7 +19,7 @@ int min_degress = 18;
 float min_step = (float)min_degress / 360.0;
 
 Motor::Motor(byte pins[]) {
-    // this->_stepper = CustomStepper(8,9,10,11);
+    this->_stepper = &CustomStepper::CustomStepper(pins[0], pins[1], pins[2], pins[3]);
     this->_curState = Idle;
     this->_prevState = Idle;
 }
@@ -45,11 +43,11 @@ void Motor::initData() {
 
 void Motor::initStepper() {
     // Устанавливаем кол-во оборотов в минуту
-    stepper.setRPM(12);
+    this->_stepper->setRPM(12);
     // Устанавливаем кол-во шагов на полный оборот. Максимальное значение 4075.7728395
-    stepper.setSPR(4075.7728395);
-    stepper.setDirection(STOP);
-    stepper.rotate();
+    this->_stepper->setSPR(4075.7728395);
+    this->_stepper->setDirection(_UP);
+    this->_stepper->rotate();
 }
 
 void Motor::print() {
@@ -81,18 +79,18 @@ void Motor::loop() {
       return;
     }
 
-    if (stepper.isDone()) {
+    if (this->_stepper->isDone()) {
         // Для разовой подачи команды на смену направления
         if (this->_prevState != this->_curState) {
             switch (this->_curState) {
                 case Up:
-                    stepper.setDirection(_UP);
+                    this->_stepper->setDirection(_UP);
                     break;
                 case Down:
-                    stepper.setDirection(_DOWN);
+                    this->_stepper->setDirection(_DOWN);
                     break;
                 case Idle:
-                    stepper.setDirection(STOP);
+                    this->_stepper->setDirection(STOP);
                     break;
             }
             this->_prevState = this->_curState;
@@ -124,10 +122,10 @@ void Motor::loop() {
 
         Serial.print(this->_data.curPosition);
         Serial.print("\n");
-        stepper.rotateDegrees(min_degress);
+        this->_stepper->rotateDegrees(min_degress);
     }
 
-    stepper.run();
+    this->_stepper->run();
 }
 
 void Motor::changeState(motorState newState) {
