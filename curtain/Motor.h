@@ -23,7 +23,7 @@ class Motor {
   public:
     Motor(byte pinA, byte pinB, byte pinC, byte pinD);
     bool isSimilar(float A, float B);
-    void initData(bool active);
+    void initData(bool firstInit, bool active);
     void initStepper();
     void print();
     void loop();

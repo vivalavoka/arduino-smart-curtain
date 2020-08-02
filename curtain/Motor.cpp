@@ -1,12 +1,10 @@
-// Адрес ячейки
-#define INIT_ADDR 1023
-// Ключ первого запуска. 0-254
-#define INIT_KEY 254
-
 #include "Motor.h"
 
+// крутить по часовой, чтобы поднять штору
 const int _UP = CW;
+// крутить против часовой, чтобы опустить штору
 const int _DOWN = CCW;
+// минимальная позиция (открытое состоения шторы)
 const float MIN_POSITION=1.0;
 // количество оборотов до полного закрытия шторы
 const float DEFAULT_MAX_POSITION=2.0;
@@ -24,13 +22,8 @@ Motor::Motor(byte pinA, byte pinB, byte pinC, byte pinD) {
     this->_prevState = Idle;
 }
 
-void Motor::initData(bool active) {
-   if (EEPROM.read(INIT_ADDR) != INIT_KEY) {
-    // Записали ключ
-    EEPROM.write(INIT_ADDR, INIT_KEY);
-
-    Serial.print("First init\n");
-
+void Motor::initData(bool firstInit, bool active) {
+   if (firstInit) {
     this->_data.active = active;
     this->_data.curPosition = MIN_POSITION;
     this->_data.maxPosition = DEFAULT_MAX_POSITION;
@@ -39,7 +32,6 @@ void Motor::initData(bool active) {
   }
 
   EEPROM.get((int)&motorStruct_addr, this->_data);
-  this->_data.active = active;
 }
 
 void Motor::initStepper() {

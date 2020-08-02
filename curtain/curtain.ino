@@ -1,3 +1,8 @@
+// Адрес ячейки
+#define INIT_ADDR 1023
+// Ключ первого запуска. 0-254
+#define INIT_KEY 1
+
 #define MOTOR_COUNT 2
 
 // // Дребезг, случайные замыкания
@@ -46,18 +51,27 @@ Motor secondMotor(4, 5, 6, 7);
 Motor motorList[] = {firstMotor, secondMotor};
 
 void printStructList() {
-  Serial.print("First Motor:\n");
-  motorList[0].print();
-  Serial.print("Second Motor:\n");
-  motorList[1].print();
+  for (int i = 0; i < MOTOR_COUNT; i++) {
+    Serial.print(i+1);
+    Serial.print(" Motor:\n");
+    motorList[i].print();
+  }
 }
 
 void setup() {
   Serial.begin(9600);
   Serial.print("Setup\n");
 
+  bool firstInit = false;
+  if (EEPROM.read(INIT_ADDR) != INIT_KEY) {
+    Serial.print("First init\n");
+    // Записали ключ
+    EEPROM.write(INIT_ADDR, INIT_KEY);
+    firstInit = true;
+  }
+
   for (int i = 0; i < MOTOR_COUNT; i++) {
-    motorList[i].initData(i == 1);
+    motorList[i].initData(firstInit, i == 0);
     motorList[i].initStepper();
   }
 
