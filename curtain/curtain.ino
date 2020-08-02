@@ -187,9 +187,9 @@ void controlManagerLoop() {
         printStructList();
         break;
       default: {
-        for (int i = 0; i < MOTOR_COUNT; i++) {
+        // for (int i = 0; i < MOTOR_COUNT; i++) {
           controlLoop(results.value);
-        }
+        // }
       }
     }
     irrecv.resume();
@@ -220,6 +220,7 @@ void controlLoop(unsigned long value) {
   if (firstMotor.isActive()) {
     switch (value) {
       case plus:
+        Serial.print("Plus");
         firstMotor.getCurState() == Up ? doEvent(Stop) : doEvent(Open);
         break;
       case minus:

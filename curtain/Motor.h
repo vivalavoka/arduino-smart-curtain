@@ -15,7 +15,7 @@ struct MotorStruct {
 
 class Motor {
   private:
-    CustomStepper &_stepper;
+    CustomStepper *_stepper;
     MotorStruct _data;
     enum motorState _curState;
     enum motorState _prevState;
