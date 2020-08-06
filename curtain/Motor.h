@@ -19,11 +19,13 @@ class Motor {
     MotorStruct _data;
     enum motorState _curState;
     enum motorState _prevState;
+    int _eeAddress;
 
   public:
     Motor(byte pinA, byte pinB, byte pinC, byte pinD);
+    static MotorStruct EEMEM motorStruct_addr[2];
     bool isSimilar(float A, float B);
-    void initData(bool firstInit, bool active);
+    void initData(bool firstInit, int index);
     void initStepper();
     void print();
     void loop();

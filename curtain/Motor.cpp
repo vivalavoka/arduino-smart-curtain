@@ -9,8 +9,6 @@ const float MIN_POSITION=1.0;
 // количество оборотов до полного закрытия шторы
 const float DEFAULT_MAX_POSITION=2.0;
 
-MotorStruct EEMEM motorStruct_addr;
-
 // 18;
 int min_degress = 18;
 // 0.05
@@ -22,16 +20,21 @@ Motor::Motor(byte pinA, byte pinB, byte pinC, byte pinD) {
     this->_prevState = Idle;
 }
 
-void Motor::initData(bool firstInit, bool active) {
-   if (firstInit) {
-    this->_data.active = active;
-    this->_data.curPosition = MIN_POSITION;
-    this->_data.maxPosition = DEFAULT_MAX_POSITION;
+void Motor::initData(bool firstInit, int index) {
+    this->_eeAddress = index * sizeof(MotorStruct);
+    Serial.print("Address");
+    Serial.print(this->_eeAddress);
 
-    EEPROM.put((int)&motorStruct_addr, this->_data);
-  }
+    if (firstInit) {
+        this->_data.active = true;
+        this->_data.curPosition = MIN_POSITION;
+        this->_data.maxPosition = DEFAULT_MAX_POSITION;
 
-  EEPROM.get((int)&motorStruct_addr, this->_data);
+        this->saveData();
+        // EEPROM.put(this->_eeAddress, this->_data);
+    }
+
+    EEPROM.get(this->_eeAddress, this->_data);
 }
 
 void Motor::initStepper() {
@@ -144,5 +147,5 @@ bool Motor::toggleActive() {
 }
 
 void Motor::saveData() {
-    EEPROM.put((int)&motorStruct_addr, this->_data);
+    EEPROM.put(this->_eeAddress, this->_data);
 }
