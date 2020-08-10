@@ -1,7 +1,7 @@
 // Адрес ячейки
 #define INIT_ADDR 1023
 // Ключ первого запуска. 0-254
-#define INIT_KEY 3
+#define INIT_KEY 5
 
 #define MOTOR_COUNT 2
 
@@ -181,7 +181,9 @@ void doEvent(enum irEvent e, Motor *mtr) {
     }
     case MotorSwitch: {
       for (int i = 0; i < MOTOR_COUNT; i++) {
-        doEvent(Stop, &motorList[i]);
+        if (motorList[i].getCurState() != Idle) {
+          continue;
+        }
         motorList[i].toggleActive();
         motorList[i].saveData();
       }

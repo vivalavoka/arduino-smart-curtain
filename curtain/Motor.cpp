@@ -22,11 +22,9 @@ Motor::Motor(byte pinA, byte pinB, byte pinC, byte pinD) {
 
 void Motor::initData(bool firstInit, int index) {
     this->_eeAddress = index * sizeof(MotorStruct);
-    Serial.print("Address");
-    Serial.print(this->_eeAddress);
 
     if (firstInit) {
-        this->_data.active = true;
+        this->_data.active = index == 0;
         this->_data.curPosition = MIN_POSITION;
         this->_data.maxPosition = DEFAULT_MAX_POSITION;
 

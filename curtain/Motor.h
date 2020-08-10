@@ -23,7 +23,6 @@ class Motor {
 
   public:
     Motor(byte pinA, byte pinB, byte pinC, byte pinD);
-    static MotorStruct EEMEM motorStruct_addr[2];
     bool isSimilar(float A, float B);
     void initData(bool firstInit, int index);
     void initStepper();
