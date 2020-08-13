@@ -138,23 +138,39 @@ void doEvent(enum irEvent e, Motor *mtr) {
       // if (motorList[i].getCurState() != Idle) {
       //   continue;
       // }
-      if (mtrActiveState == First) {
-        mtrActiveState = Second;
-        motorList[0].setActive(0);
-        motorList[1].setActive(1);
-      } else if (mtrActiveState == Second) {
-        mtrActiveState = Both;
-        motorList[0].setActive(1);
-        motorList[1].setActive(1);
-      } else if (mtrActiveState == Both) {
-        mtrActiveState = First;
-        motorList[0].setActive(1);
-        motorList[1].setActive(0);
-      }
+      switchMotors();
 
       Serial.print("Motor switched\n");
       printStructList();
       break;
+    }
+  }
+}
+
+void switchMotors() {
+  if(mtrMngMode == Auto) {
+    if (mtrActiveState == First) {
+      mtrActiveState = Second;
+      motorList[0].setActive(0);
+      motorList[1].setActive(1);
+    } else if (mtrActiveState == Second) {
+      mtrActiveState = Both;
+      motorList[0].setActive(1);
+      motorList[1].setActive(1);
+    } else if (mtrActiveState == Both) {
+      mtrActiveState = First;
+      motorList[0].setActive(1);
+      motorList[1].setActive(0);
+    }
+  } else if (mtrMngMode == Calibration) {
+    if (mtrActiveState == First) {
+      mtrActiveState = Second;
+      motorList[0].setActive(0);
+      motorList[1].setActive(1);
+    } else if (mtrActiveState == Second) {
+      mtrActiveState = First;
+      motorList[0].setActive(1);
+      motorList[1].setActive(0);
     }
   }
 }
