@@ -6,6 +6,7 @@
 #include <EEPROM.h>
 
 enum motorState {Idle, Up, Down};
+enum motorManagerMode {Auto, Calibration};
 
 struct MotorStruct {
   bool active;
@@ -27,13 +28,13 @@ class Motor {
     void initData(bool firstInit, int index);
     void initStepper();
     void print();
-    void loop();
+    void loop(motorManagerMode mtrMngMode);
     motorState getCurState();
     motorState getPrevState();
     bool isActive();
 
     void changeState(motorState newState);
-    bool toggleActive();
+    void setActive(bool state);
     void saveData();
 };
 

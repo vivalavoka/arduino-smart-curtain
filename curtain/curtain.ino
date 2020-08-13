@@ -30,6 +30,9 @@ const unsigned long zero = 16738455;
 IRrecv irrecv(ir_pin);
 decode_results results;
 
+enum motorActiveState {First, Second, Both};
+
+motorActiveState mtrActiveState = Both;
 // События
 // enum event {Press, Release, WaitDebounce, WaitHold, WaitLongHold, WaitIdle};
 
@@ -39,7 +42,7 @@ decode_results results;
 
 // unsigned long pressTimestamp;
 
-enum motorManagerMode {Auto, Calibration};
+// enum motorManagerMode {Auto, Calibration};
 
 enum motorManagerMode mtrMngMode = Auto;
 
@@ -88,58 +91,10 @@ void loop() {
 
 void motorManagerLoop() {
   for (int i = 0; i < MOTOR_COUNT; i++) {
-    motorList[i].loop();
+    motorList[i].loop(mtrMngMode);
   }
-    // if (mtrMngMode == Calibration) {
-    //   // calibrationLoop(&motorList[i], &stepperList[i]);
-    // } else if (mtrMngMode == Auto) {
-    //   autoLoop();
-    // }
 }
 
-void calibrationLoop(MotorStruct *mtr, CustomStepper *stepper) {
-  // if ((mtr->curState == Idle && mtr->prevState == Idle) || !mtr->active) {
-  //   return;
-  // }
-
-  // if (stepper->isDone()) {
-  //   // Для разовой подачи команды на смену направления
-  //   if (mtr->curState == Up && mtr->prevState != Up) {
-  //     stepper->setDirection(_UP);
-  //     mtr->prevState = mtr->curState;
-  //   } else if (mtr->curState == Down && mtr->prevState != Down) {
-  //     stepper->setDirection(_DOWN);
-  //     mtr->curPosition = MIN_POSITION;
-
-  //     mtr->prevState = mtr->curState;
-  //   } else if (mtr->curState == Idle && mtr->prevState != Idle) {
-  //     stepper->setDirection(STOP);
-  //     if (mtr->prevState == Down) {
-  //       mtr->maxPosition = mtr->curPosition;
-  //       Serial.print("Save max turnover: ");
-  //       Serial.print(mtr->maxPosition);
-  //       Serial.print("\n");
-
-  //       EEPROM.put((int)&motorList_addr, motorList);
-
-  //       doEvent(MenuSwitch, mtr);
-  //     }
-  //     mtr->prevState = mtr->curState;
-  //     return;
-  //   }
-
-  //   // Изменение текущего шага мотора
-  //   if (mtr->curState == Up) {
-  //     mtr->curPosition -= min_step;
-  //   } else if (mtr->curState == Down) {
-  //     mtr->curPosition += min_step;
-  //   }
-
-  //   Serial.print(mtr->curPosition);
-  //   Serial.print("\n");
-  //   stepper->rotateDegrees(min_degress);
-  // }
-}
 
 void doEvent(enum irEvent e, Motor *mtr) {
   switch (e) {
@@ -180,12 +135,21 @@ void doEvent(enum irEvent e, Motor *mtr) {
       break;
     }
     case MotorSwitch: {
-      for (int i = 0; i < MOTOR_COUNT; i++) {
-        if (motorList[i].getCurState() != Idle) {
-          continue;
-        }
-        motorList[i].toggleActive();
-        motorList[i].saveData();
+      // if (motorList[i].getCurState() != Idle) {
+      //   continue;
+      // }
+      if (mtrActiveState == First) {
+        mtrActiveState = Second;
+        motorList[0].setActive(0);
+        motorList[1].setActive(1);
+      } else if (mtrActiveState == Second) {
+        mtrActiveState = Both;
+        motorList[0].setActive(1);
+        motorList[1].setActive(1);
+      } else if (mtrActiveState == Both) {
+        mtrActiveState = First;
+        motorList[0].setActive(1);
+        motorList[1].setActive(0);
       }
 
       Serial.print("Motor switched\n");
