@@ -19,13 +19,16 @@ class Motor {
     CustomStepper *_stepper;
     enum motorState _curState;
     enum motorState _prevState;
+    MotorStruct _data;
     int _eeAddress;
+    void _switchStepperDirection(motorManagerMode mtrMngMode);
+    void _checkEndValues();
+    void _changePosition();
+    bool _isSimilar(float A, float B);
 
   public:
-    MotorStruct _data;
-    bool saved;
+    bool needSave;
     Motor(byte pinA, byte pinB, byte pinC, byte pinD);
-    bool isSimilar(float A, float B);
     void initData(bool firstInit, int index);
     void initStepper();
     void print();

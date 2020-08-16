@@ -24,16 +24,15 @@ void Motor::initData(bool firstInit, int index) {
     this->_eeAddress = index * sizeof(MotorStruct);
 
     if (firstInit) {
-        this->_data.active = index == 0;
+        this->_data.active = true;
         this->_data.curPosition = MIN_POSITION;
         this->_data.maxPosition = DEFAULT_MAX_POSITION;
 
         this->saveData();
-        // EEPROM.put(this->_eeAddress, this->_data);
     }
 
     EEPROM.get(this->_eeAddress, this->_data);
-    this->saved = true;
+    this->needSave = false;
 }
 
 void Motor::initStepper() {
@@ -65,7 +64,7 @@ void Motor::print() {
 }
 
 
-bool Motor::isSimilar(float A, float B) {
+bool Motor::_isSimilar(float A, float B) {
     return (fabs(A - B) < 0.005f);
 }
 
@@ -77,66 +76,76 @@ void Motor::loop(motorManagerMode mtrMngMode) {
     if (this->_stepper->isDone()) {
         // Для разовой подачи команды на смену направления
         if (this->_prevState != this->_curState) {
-            switch (this->_curState) {
-                case Up:
-                    this->_stepper->setDirection(_UP);
-                    break;
-                case Down:
-                    this->_stepper->setDirection(_DOWN);
-                    if (mtrMngMode == Calibration) {
-                        this->_data.curPosition = MIN_POSITION;
-                    }
-                    break;
-                case Idle:
-                    this->_stepper->setDirection(STOP);
-                    if (mtrMngMode == Calibration && this->_prevState == Down) {
-                        this->_data.maxPosition = this->_data.curPosition;
-                        Serial.print("Save max turnover: ");
-                        Serial.print(this->_data.maxPosition);
-                        Serial.print("\n");
-                    }
-                    break;
-            }
+            this->_switchStepperDirection(mtrMngMode);
             this->_prevState = this->_curState;
         }
 
         if (mtrMngMode == Auto) {
-            // Проверка на остановку
-            if (this->_curState == Up && this->isSimilar(this->_data.curPosition, MIN_POSITION)) {
-                Serial.print("Completely open\n");
-                this->_data.curPosition = MIN_POSITION;
-                this->changeState(Idle);
-                // return;
-            } else if (this->_curState == Down && this->isSimilar(this->_data.curPosition, this->_data.maxPosition)) {
-                Serial.print("Completely closed\n");
-                this->_data.curPosition = this->_data.maxPosition;
-                this->changeState(Idle);
-                // return;
-            }
+            this->_checkEndValues();
         }
 
-        // Изменение текущего шага мотора
-        if (this->_curState == Up) {
-            this->_data.curPosition -= min_step;
-            this->_stepper->rotateDegrees(min_degress);
-            Serial.print(this->_data.curPosition);
-            Serial.print("\n");
-        } else if (this->_curState == Down) {
-            this->_data.curPosition += min_step;
-            this->_stepper->rotateDegrees(min_degress);
-            Serial.print(this->_data.curPosition);
-            Serial.print("\n");
-        }
+        this->_changePosition();
     }
 
     this->_stepper->run();
+}
+
+void Motor::_switchStepperDirection(motorManagerMode mtrMngMode) {
+    switch (this->_curState) {
+        case Up:
+            this->_stepper->setDirection(_UP);
+            break;
+        case Down:
+            this->_stepper->setDirection(_DOWN);
+            if (mtrMngMode == Calibration) {
+                this->_data.curPosition = MIN_POSITION;
+            }
+            break;
+        case Idle:
+            this->_stepper->setDirection(STOP);
+            if (mtrMngMode == Calibration && this->_prevState == Down) {
+                this->_data.maxPosition = this->_data.curPosition;
+                Serial.print("Save max turnover: ");
+                Serial.print(this->_data.maxPosition);
+                Serial.print("\n");
+            }
+            break;
+    }
+}
+
+void Motor::_checkEndValues() {
+    // Проверка на остановку
+    if (this->_curState == Up && this->_isSimilar(this->_data.curPosition, MIN_POSITION)) {
+        Serial.print("Completely open\n");
+        this->_data.curPosition = MIN_POSITION;
+        this->changeState(Idle);
+    } else if (this->_curState == Down && this->_isSimilar(this->_data.curPosition, this->_data.maxPosition)) {
+        Serial.print("Completely closed\n");
+        this->_data.curPosition = this->_data.maxPosition;
+        this->changeState(Idle);
+    }
+}
+
+void Motor::_changePosition() {
+    // Изменение текущего шага мотора
+    if (this->_curState == Up) {
+        this->_data.curPosition -= min_step;
+        this->_stepper->rotateDegrees(min_degress);
+        Serial.print(this->_data.curPosition);
+        Serial.print("\n");
+    } else if (this->_curState == Down) {
+        this->_data.curPosition += min_step;
+        this->_stepper->rotateDegrees(min_degress);
+        Serial.print(this->_data.curPosition);
+        Serial.print("\n");
+    }
 }
 
 void Motor::changeState(motorState newState) {
     this->_prevState = this->_curState;
     this->_curState = newState;
     if (this->_curState == Idle) {
-        this->saved = false;
+        this->needSave = true;
     }
 }
 
@@ -157,8 +166,6 @@ void Motor::setActive(bool state) {
 }
 
 void Motor::saveData() {
-    Serial.print("SAVE: ");
-    Serial.print(this->_eeAddress);
-    Serial.print("\n");
     EEPROM.put(this->_eeAddress, this->_data);
+    this->needSave = false;
 }
