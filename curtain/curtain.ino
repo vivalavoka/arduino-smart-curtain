@@ -1,7 +1,7 @@
-// Адрес ячейки
+/ Адрес ячейки
 #define INIT_ADDR 1023
 // Ключ первого запуска. 0-254
-#define INIT_KEY 5
+#define INIT_KEY 8
 
 #define MOTOR_COUNT 2
 
@@ -73,9 +73,15 @@ void setup() {
     firstInit = true;
   }
 
+  MotorStruct _mtrStructs[2];
+  eeprom_read_block((void*)&_mtrStructs, 0, sizeof(_mtrStructs));
   for (int i = 0; i < MOTOR_COUNT; i++) {
-    motorList[i].initData(firstInit, i);
+    motorList[i].initData(firstInit, _mtrStructs[i]);
     motorList[i].initStepper();
+  }
+
+  if (firstInit) {
+    saveAllData();
   }
 
   printStructList();
@@ -90,8 +96,13 @@ void loop() {
 }
 
 void motorManagerLoop() {
+  bool needSave = false;
   for (int i = 0; i < MOTOR_COUNT; i++) {
-    motorList[i].loop(mtrMngMode);
+    bool _needSave = motorList[i].loop(mtrMngMode);
+    needSave = _needSave || needSave;
+  }
+  if (needSave) {
+    saveAllData();
   }
 }
 
@@ -187,7 +198,8 @@ void controlManagerLoop() {
         doEvent(MotorSwitch, &motorList[0]);
         break;
       case zero:
-        printStructList();
+        saveAllData();
+        // printStructList();
         break;
       default: {
         for (int i = 0; i < MOTOR_COUNT; i++) {
@@ -233,6 +245,14 @@ void controlLoop(unsigned long value, Motor *mtr) {
         break;
     }
   }
+}
+
+void saveAllData() {
+  Serial.print("SAVE\n");
+  MotorStruct _mtrlist[] = {motorList[0]._data, motorList[1]._data};
+  // eeprom_write_block((void*)&motorList[0]._data, 0, sizeof(motorList[0]._data));
+  // eeprom_write_block((void*)&motorList[1]._data, 10, sizeof(motorList[1]._data));
+  eeprom_write_block((void*)&_mtrlist, 0, sizeof(_mtrlist));
 }
 
 // void doEvent(enum event e) {

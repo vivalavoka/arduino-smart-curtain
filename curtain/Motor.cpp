@@ -20,19 +20,22 @@ Motor::Motor(byte pinA, byte pinB, byte pinC, byte pinD) {
     this->_prevState = Idle;
 }
 
-void Motor::initData(bool firstInit, int index) {
-    this->_eeAddress = index * sizeof(MotorStruct);
+void Motor::initData(bool firstInit, MotorStruct data) {
+    // this->_eeAddress = index * sizeof(MotorStruct);
 
     if (firstInit) {
-        this->_data.active = index == 0;
+        this->_data.active = true;
         this->_data.curPosition = MIN_POSITION;
         this->_data.maxPosition = DEFAULT_MAX_POSITION;
-
-        this->saveData();
+        // this->saveData();
         // EEPROM.put(this->_eeAddress, this->_data);
+    } else {
+        this->_data.active = data.active;
+        this->_data.curPosition = data.curPosition;
+        this->_data.maxPosition = data.maxPosition;
     }
 
-    EEPROM.get(this->_eeAddress, this->_data);
+    // EEPROM.get(this->_eeAddress, this->_data);
 }
 
 void Motor::initStepper() {
@@ -68,9 +71,9 @@ bool Motor::isSimilar(float A, float B) {
     return (fabs(A - B) < 0.005f);
 }
 
-void Motor::loop(motorManagerMode mtrMngMode) {
+bool Motor::loop(motorManagerMode mtrMngMode) {
     if (!this->isActive() || (this->_curState == Idle && this->_prevState == Idle)) {
-      return;
+      return false;
     }
 
     if (this->_stepper->isDone()) {
@@ -93,14 +96,12 @@ void Motor::loop(motorManagerMode mtrMngMode) {
                         Serial.print("Save max turnover: ");
                         Serial.print(this->_data.maxPosition);
                         Serial.print("\n");
-                        // this->saveData();
                     } 
                     break;
             }
             this->_prevState = this->_curState;
-            // this->saveData();
             if (this->_curState == Idle) {
-                return;
+                return true;
             }
         }
 
@@ -110,12 +111,12 @@ void Motor::loop(motorManagerMode mtrMngMode) {
                 Serial.print("Completely open\n");
                 this->_data.curPosition = MIN_POSITION;
                 this->changeState(Idle);
-                return;
+                return false;
             } else if (this->_curState == Down && this->isSimilar(this->_data.curPosition, this->_data.maxPosition)) {
                 Serial.print("Completely closed\n");
                 this->_data.curPosition = this->_data.maxPosition;
                 this->changeState(Idle);
-                return;
+                return false;
             }
         }
 
@@ -132,6 +133,7 @@ void Motor::loop(motorManagerMode mtrMngMode) {
     }
 
     this->_stepper->run();
+    return false;
 }
 
 void Motor::changeState(motorState newState) {
@@ -156,6 +158,10 @@ void Motor::setActive(bool state) {
 }
 
 void Motor::saveData() {
-    Serial.print("SAVE\n");
-    EEPROM.put(this->_eeAddress, this->_data);
+    // if (this->_stepper->isDone()) {
+    //     delay(500);
+    //     Serial.print("SAVE\n");
+    //     // this->_stepper->setDirection(STOP);
+    //     EEPROM.put(this->_eeAddress, this->_data);
+    // }
 }

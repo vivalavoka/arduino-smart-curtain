@@ -17,18 +17,18 @@ struct MotorStruct {
 class Motor {
   private:
     CustomStepper *_stepper;
-    MotorStruct _data;
     enum motorState _curState;
     enum motorState _prevState;
     int _eeAddress;
 
   public:
+    MotorStruct _data;
     Motor(byte pinA, byte pinB, byte pinC, byte pinD);
     bool isSimilar(float A, float B);
-    void initData(bool firstInit, int index);
+    void initData(bool firstInit, MotorStruct data);
     void initStepper();
     void print();
-    void loop(motorManagerMode mtrMngMode);
+    bool loop(motorManagerMode mtrMngMode);
     motorState getCurState();
     motorState getPrevState();
     bool isActive();
