@@ -94,12 +94,12 @@ void Motor::loop(motorManagerMode mtrMngMode) {
                         Serial.print(this->_data.maxPosition);
                         Serial.print("\n");
                         // this->saveData();
-                    } 
+                    }
                     break;
             }
             this->_prevState = this->_curState;
-            // this->saveData();
             if (this->_curState == Idle) {
+                this->saveData();
                 return;
             }
         }
@@ -157,5 +157,7 @@ void Motor::setActive(bool state) {
 
 void Motor::saveData() {
     Serial.print("SAVE\n");
+    Serial.print(this->_eeAddress);
+    Serial.print("\n");
     EEPROM.put(this->_eeAddress, this->_data);
 }

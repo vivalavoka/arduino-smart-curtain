@@ -1,7 +1,7 @@
 // Адрес ячейки
 #define INIT_ADDR 1023
 // Ключ первого запуска. 0-254
-#define INIT_KEY 5
+#define INIT_KEY 6
 
 #define MOTOR_COUNT 2
 
