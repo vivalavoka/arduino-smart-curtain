@@ -33,6 +33,7 @@ void Motor::initData(bool firstInit, int index) {
     }
 
     EEPROM.get(this->_eeAddress, this->_data);
+    this->saved = true;
 }
 
 void Motor::initStepper() {
@@ -93,15 +94,10 @@ void Motor::loop(motorManagerMode mtrMngMode) {
                         Serial.print("Save max turnover: ");
                         Serial.print(this->_data.maxPosition);
                         Serial.print("\n");
-                        // this->saveData();
                     }
                     break;
             }
             this->_prevState = this->_curState;
-            if (this->_curState == Idle) {
-                this->saveData();
-                return;
-            }
         }
 
         if (mtrMngMode == Auto) {
@@ -110,25 +106,27 @@ void Motor::loop(motorManagerMode mtrMngMode) {
                 Serial.print("Completely open\n");
                 this->_data.curPosition = MIN_POSITION;
                 this->changeState(Idle);
-                return;
+                // return;
             } else if (this->_curState == Down && this->isSimilar(this->_data.curPosition, this->_data.maxPosition)) {
                 Serial.print("Completely closed\n");
                 this->_data.curPosition = this->_data.maxPosition;
                 this->changeState(Idle);
-                return;
+                // return;
             }
         }
 
         // Изменение текущего шага мотора
         if (this->_curState == Up) {
             this->_data.curPosition -= min_step;
+            this->_stepper->rotateDegrees(min_degress);
+            Serial.print(this->_data.curPosition);
+            Serial.print("\n");
         } else if (this->_curState == Down) {
             this->_data.curPosition += min_step;
+            this->_stepper->rotateDegrees(min_degress);
+            Serial.print(this->_data.curPosition);
+            Serial.print("\n");
         }
-
-        Serial.print(this->_data.curPosition);
-        Serial.print("\n");
-        this->_stepper->rotateDegrees(min_degress);
     }
 
     this->_stepper->run();
@@ -137,6 +135,9 @@ void Motor::loop(motorManagerMode mtrMngMode) {
 void Motor::changeState(motorState newState) {
     this->_prevState = this->_curState;
     this->_curState = newState;
+    if (this->_curState == Idle) {
+        this->saved = false;
+    }
 }
 
 bool Motor::isActive() {
@@ -156,7 +157,7 @@ void Motor::setActive(bool state) {
 }
 
 void Motor::saveData() {
-    Serial.print("SAVE\n");
+    Serial.print("SAVE: ");
     Serial.print(this->_eeAddress);
     Serial.print("\n");
     EEPROM.put(this->_eeAddress, this->_data);

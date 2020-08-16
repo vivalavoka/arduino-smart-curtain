@@ -1,7 +1,7 @@
 // Адрес ячейки
 #define INIT_ADDR 1023
 // Ключ первого запуска. 0-254
-#define INIT_KEY 6
+#define INIT_KEY 12
 
 #define MOTOR_COUNT 2
 
@@ -87,6 +87,17 @@ void setup() {
 void loop() {
   controlManagerLoop();
   motorManagerLoop();
+  if(motorList[0].getCurState() == Idle
+    && motorList[0].getPrevState() == Idle
+    && !motorList[0].saved
+    && motorList[1].getCurState() == Idle
+    && motorList[1].getPrevState() == Idle
+    && !motorList[1].saved) {
+      Serial.print("Save ALL DATA\n");
+      saveAllData();
+      motorList[0].saved = true;
+      motorList[1].saved = true;
+    }
 }
 
 void motorManagerLoop() {
@@ -232,6 +243,12 @@ void controlLoop(unsigned long value, Motor *mtr) {
         doEvent(Stop, mtr);
         break;
     }
+  }
+}
+
+void saveAllData() {
+  for (int i = 0; i < MOTOR_COUNT; i++) {
+    motorList[i].saveData();
   }
 }
 

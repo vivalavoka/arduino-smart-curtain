@@ -17,12 +17,13 @@ struct MotorStruct {
 class Motor {
   private:
     CustomStepper *_stepper;
-    MotorStruct _data;
     enum motorState _curState;
     enum motorState _prevState;
     int _eeAddress;
 
   public:
+    MotorStruct _data;
+    bool saved;
     Motor(byte pinA, byte pinB, byte pinC, byte pinD);
     bool isSimilar(float A, float B);
     void initData(bool firstInit, int index);
