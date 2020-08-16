@@ -93,7 +93,7 @@ void Motor::loop(motorManagerMode mtrMngMode) {
                         Serial.print("Save max turnover: ");
                         Serial.print(this->_data.maxPosition);
                         Serial.print("\n");
-                        this->saveData();
+                        // this->saveData();
                     } 
                     break;
             }
@@ -126,6 +126,7 @@ void Motor::loop(motorManagerMode mtrMngMode) {
             this->_data.curPosition += min_step;
         }
 
+        this->saveData();
         Serial.print(this->_data.curPosition);
         Serial.print("\n");
         this->_stepper->rotateDegrees(min_degress);
@@ -157,5 +158,5 @@ void Motor::setActive(bool state) {
 
 void Motor::saveData() {
     Serial.print("SAVE\n");
-    // EEPROM.put(this->_eeAddress, this->_data);
+    EEPROM.put(this->_eeAddress, this->_data);
 }
