@@ -126,7 +126,6 @@ void Motor::loop(motorManagerMode mtrMngMode) {
             this->_data.curPosition += min_step;
         }
 
-        this->saveData();
         Serial.print(this->_data.curPosition);
         Serial.print("\n");
         this->_stepper->rotateDegrees(min_degress);
