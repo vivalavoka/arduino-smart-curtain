@@ -102,6 +102,7 @@ void Motor::_switchStepperDirection(motorManagerMode mtrMngMode) {
             }
             break;
         case Idle:
+            this->needSave = true;
             this->_stepper->setDirection(STOP);
             if (mtrMngMode == Calibration && this->_prevState == Down) {
                 this->_data.maxPosition = this->_data.curPosition;
@@ -144,9 +145,6 @@ void Motor::_changePosition() {
 void Motor::changeState(motorState newState) {
     this->_prevState = this->_curState;
     this->_curState = newState;
-    if (this->_curState == Idle) {
-        this->needSave = true;
-    }
 }
 
 bool Motor::isActive() {
