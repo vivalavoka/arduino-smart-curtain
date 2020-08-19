@@ -5,14 +5,10 @@
 
 #define MOTOR_COUNT 2
 
-// // Дребезг, случайные замыкания
-// #define button_debounce 20
-// // Клик
-// #define button_hold 250
-// // Долгое нажатие
-// #define button_long 3000
-// // Ошибка, на кнопку сели
-// #define button_idle 5000
+// Дребезг, случайные замыкания
+#define button_debounce 20
+// Клик
+#define button_hold 1000
 
 #include <EEPROM.h>
 #include "IRremote.h"
@@ -34,15 +30,13 @@ enum motorActiveState {First, Second, Both};
 
 motorActiveState mtrActiveState = Both;
 // События
-// enum event {Press, Release, WaitDebounce, WaitHold, WaitLongHold, WaitIdle};
+enum event {Press, Release, WaitDebounce, WaitHold, WaitLongHold, WaitSleep};
 
-// enum buttonState {Idle, PreClick, Click, Hold, LongHold, ForcedIdle};
+enum buttonState {Sleep, PreClick, Click, Hold, LongHold, ForcedSleep};
 
-// enum buttonState btnState = Idle;
+enum buttonState btnState = Sleep;
 
-// unsigned long pressTimestamp;
-
-// enum motorManagerMode {Auto, Calibration};
+unsigned long pressTimestamp;
 
 enum motorManagerMode mtrMngMode = Auto;
 
@@ -61,6 +55,7 @@ void printStructList() {
   }
 }
 
+int btPin = 13;
 int piezoPin = 2;
 int FIRST_LED = 12;
 int SECOND_LED = 3;
@@ -111,6 +106,12 @@ void setup() {
   setMotorActivities();
 
   printStructList();
+}
+
+void saveAllData() {
+  for (int i = 0; i < MOTOR_COUNT; i++) {
+    motorList[i].saveData();
+  }
 }
 
 void loop() {
@@ -175,6 +176,8 @@ void doEvent(enum irEvent e, Motor *mtr) {
             doEvent(Stop, &motorList[i]);
           }
         }
+        mtrActiveState = First;
+        setMotorActivities();
         Serial.print("Calibration mode\n");
       } else if (mtrMngMode == Calibration) {
         mtrMngMode = Auto;
@@ -209,7 +212,9 @@ void switchMotors() {
     }
   }
   setMotorActivities();
-  saveAllData();
+  if (mtrMngMode == Auto) {
+    saveAllData();
+  }
 }
 
 void setMotorActivities() {
@@ -249,6 +254,11 @@ motorActiveState getCurrentActiveState() {
 }
 
 void controlManagerLoop() {
+  irControl();
+  buttonControl();
+}
+
+void irControl() {
   if (irrecv.decode(&results)) {
     // Serial.print(results.value);
     // Serial.print("\n");
@@ -270,26 +280,6 @@ void controlManagerLoop() {
     }
     irrecv.resume();
   }
-  // unsigned long mls = millis();
-
-  // if (digitalRead(btPin)) {
-  //   doEvent(Press);
-  // } else {
-  //   doEvent(Release);
-  // }
-
-  // if (mls - pressTimestamp > button_debounce) {
-  //   doEvent(WaitDebounce);
-  // }
-  // if (mls - pressTimestamp > button_hold) {
-  //   doEvent(WaitHold);
-  // }
-  // if (mls - pressTimestamp > button_long) {
-  //   doEvent(WaitLongHold);
-  // }
-  // if (mls - pressTimestamp > button_idle) {
-  //   doEvent(WaitIdle);
-  // }
 }
 
 void controlLoop(unsigned long value, Motor *mtr) {
@@ -308,62 +298,58 @@ void controlLoop(unsigned long value, Motor *mtr) {
   }
 }
 
-void saveAllData() {
-  for (int i = 0; i < MOTOR_COUNT; i++) {
-    motorList[i].saveData();
+void buttonControl() {
+  unsigned long mls = millis();
+
+  if (digitalRead(btPin)) {
+    doButtonEvent(Press);
+  } else {
+    doButtonEvent(Release);
+  }
+
+  if (mls - pressTimestamp > button_debounce) {
+    doButtonEvent(WaitDebounce);
+  }
+  if (mls - pressTimestamp > button_hold) {
+    doButtonEvent(WaitHold);
   }
 }
 
-// void doEvent(enum event e) {
-//   switch (e) {
-//     case Press:
-//       if (btnState == Idle) {
-//         btnState =  PreClick;
-//         pressTimestamp = millis();
-//       }
-//       break;
-//     case Release:
-//       onClick(btnState);
-//       btnState = Idle;
-//       break;
-//     case WaitDebounce:
-//       if (btnState == PreClick) {
-//         btnState = Click;
-//       }
-//       break;
-//     case WaitHold:
-//       if (btnState == Click) {
-//         btnState = Hold;
-//       }
-//       break;
-//     case WaitLongHold:
-//       if (btnState == Hold) {
-//         btnState = LongHold;
-//       }
-//       break;
-//     case WaitIdle:
-//       if (btnState == LongHold) {
-//         // btnState = Idle;
-//       }
-//       break;
-//   }
-// }
 
-// void onClick(enum buttonState s) {
-//   switch (s) {
-//     case Click:
-//       firstMtr.curState = firstMtr.curState == RunCCW ? RunCW : RunCCW;
-//       stepper.setDirection(STOP);
-//       Serial.print("Click\n");
-//       break;
-//     case Hold:
-//       firstMtr.curState = Stop;
-//       Serial.print("Hold\n");
-//       break;
-//     case LongHold:
-//       Serial.print("LongHold\n");
-//       break;
-//     default:
-//       break;
-//   }
-// }
+void doButtonEvent(enum event e) {
+  switch (e) {
+    case Press:
+      if (btnState == Sleep) {
+        btnState =  PreClick;
+        pressTimestamp = millis();
+      }
+      break;
+    case Release:
+      onClick(btnState);
+      btnState = Sleep;
+      break;
+    case WaitDebounce:
+      if (btnState == PreClick) {
+        btnState = Click;
+      }
+      break;
+    case WaitHold:
+      if (btnState == Click) {
+        btnState = Hold;
+        doButtonEvent(Release);
+      }
+      break;
+  }
+}
+
+void onClick(enum buttonState s) {
+  switch (s) {
+    case Click:
+      Serial.print("Click\n");
+      doEvent(MotorSwitch, &motorList[0]);
+      break;
+    case Hold:
+      Serial.print("Hold\n");
+      break;
+  }
+}
