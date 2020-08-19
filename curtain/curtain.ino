@@ -61,9 +61,23 @@ void printStructList() {
   }
 }
 
+int piezoPin = 3;
+
+//короткий звук
+void beep() {
+  tone(piezoPin, 800, 100);
+}
+
+//длинный звук
+void longBeep() {
+  tone(piezoPin, 1000, 500);
+}
+
 void setup() {
   Serial.begin(9600);
   Serial.print("Setup\n");
+
+  pinMode(piezoPin, OUTPUT);
 
   bool firstInit = false;
   if (EEPROM.read(INIT_ADDR) != INIT_KEY) {
@@ -118,6 +132,7 @@ void doEvent(enum irEvent e, Motor *mtr) {
       if (mtr->getCurState() != Down) {
         mtr->changeState(Down);
         Serial.print("Close\n");
+        beep();
       }
       break;
     }
@@ -125,6 +140,7 @@ void doEvent(enum irEvent e, Motor *mtr) {
       if (mtr->getCurState() != Up) {
         mtr->changeState(Up);
         Serial.print("Open\n");
+        beep();
       }
       break;
     }
@@ -132,6 +148,7 @@ void doEvent(enum irEvent e, Motor *mtr) {
       if (mtr->getCurState() != Idle) {
         mtr->changeState(Idle);
         Serial.print("Stop\n");
+        beep();
       }
       break;
     }
@@ -148,6 +165,7 @@ void doEvent(enum irEvent e, Motor *mtr) {
         mtrMngMode = Auto;
         Serial.print("Auto mode\n");
       }
+      longBeep();
       break;
     }
     case MotorSwitch: {

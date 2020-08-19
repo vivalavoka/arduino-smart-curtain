@@ -32,3 +32,4 @@ Remote curtains control by IR receiver
 
 - [EEPROM.h](https://alexgyver.ru/lessons/eeprom/)
 - [Library](https://www.arduino.cc/en/Hacking/libraryTutorial)
+- [IRREMOTE & TONE CONFLICT](https://arduino.stackexchange.com/questions/67239/tone-conflicts-with-irremote-library-multiple-definition-of-vector-7)
