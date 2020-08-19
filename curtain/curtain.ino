@@ -61,9 +61,9 @@ void printStructList() {
   }
 }
 
-int piezoPin = 3;
+int piezoPin = 2;
 int FIRST_LED = 12;
-int SECOND_LED = 2;
+int SECOND_LED = 3;
 
 void ledOn(int ledPin) {
   digitalWrite(ledPin, HIGH);
