@@ -62,6 +62,16 @@ void printStructList() {
 }
 
 int piezoPin = 3;
+int FIRST_LED = 12;
+int SECOND_LED = 2;
+
+void ledOn(int ledPin) {
+  digitalWrite(ledPin, HIGH);
+}
+
+void ledOff(int ledPin) {
+  digitalWrite(ledPin, LOW);
+}
 
 //короткий звук
 void beep() {
@@ -78,6 +88,8 @@ void setup() {
   Serial.print("Setup\n");
 
   pinMode(piezoPin, OUTPUT);
+  pinMode(FIRST_LED, OUTPUT);
+  pinMode(SECOND_LED, OUTPUT);
 
   bool firstInit = false;
   if (EEPROM.read(INIT_ADDR) != INIT_KEY) {
@@ -187,14 +199,20 @@ void switchMotors() {
       mtrActiveState = Second;
       motorList[0].setActive(0);
       motorList[1].setActive(1);
+      ledOff(FIRST_LED);
+      ledOn(SECOND_LED);
     } else if (mtrActiveState == Second) {
       mtrActiveState = Both;
       motorList[0].setActive(1);
       motorList[1].setActive(1);
+      ledOn(FIRST_LED);
+      ledOn(SECOND_LED);
     } else if (mtrActiveState == Both) {
       mtrActiveState = First;
       motorList[0].setActive(1);
       motorList[1].setActive(0);
+      ledOn(FIRST_LED);
+      ledOff(SECOND_LED);
     }
   } else if (mtrMngMode == Calibration) {
     if (mtrActiveState == First) {
