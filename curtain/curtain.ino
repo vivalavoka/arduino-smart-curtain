@@ -91,6 +91,9 @@ void setup() {
   pinMode(FIRST_LED, OUTPUT);
   pinMode(SECOND_LED, OUTPUT);
 
+  irrecv.enableIRIn();
+  pinMode(ir_pin, INPUT);
+
   bool firstInit = false;
   if (EEPROM.read(INIT_ADDR) != INIT_KEY) {
     Serial.print("First init\n");
@@ -104,10 +107,10 @@ void setup() {
     motorList[i].initStepper();
   }
 
-  printStructList();
+  mtrActiveState = getCurrentActiveState();
+  setMotorActivities();
 
-  irrecv.enableIRIn();
-  pinMode(ir_pin, INPUT);
+  printStructList();
 }
 
 void loop() {
@@ -181,11 +184,7 @@ void doEvent(enum irEvent e, Motor *mtr) {
       break;
     }
     case MotorSwitch: {
-      // if (motorList[i].getCurState() != Idle) {
-      //   continue;
-      // }
       switchMotors();
-
       Serial.print("Motor switched\n");
       printStructList();
       break;
@@ -197,33 +196,55 @@ void switchMotors() {
   if(mtrMngMode == Auto) {
     if (mtrActiveState == First) {
       mtrActiveState = Second;
-      motorList[0].setActive(0);
-      motorList[1].setActive(1);
-      ledOff(FIRST_LED);
-      ledOn(SECOND_LED);
     } else if (mtrActiveState == Second) {
       mtrActiveState = Both;
-      motorList[0].setActive(1);
-      motorList[1].setActive(1);
-      ledOn(FIRST_LED);
-      ledOn(SECOND_LED);
     } else if (mtrActiveState == Both) {
       mtrActiveState = First;
-      motorList[0].setActive(1);
-      motorList[1].setActive(0);
-      ledOn(FIRST_LED);
-      ledOff(SECOND_LED);
     }
   } else if (mtrMngMode == Calibration) {
     if (mtrActiveState == First) {
       mtrActiveState = Second;
-      motorList[0].setActive(0);
-      motorList[1].setActive(1);
     } else if (mtrActiveState == Second) {
       mtrActiveState = First;
+    }
+  }
+  setMotorActivities();
+  saveAllData();
+}
+
+void setMotorActivities() {
+  switch (mtrActiveState) {
+    case First:
       motorList[0].setActive(1);
       motorList[1].setActive(0);
-    }
+      ledOn(FIRST_LED);
+      ledOff(SECOND_LED);
+      break;
+    case Second:
+      motorList[0].setActive(0);
+      motorList[1].setActive(1);
+      ledOff(FIRST_LED);
+      ledOn(SECOND_LED);
+      break;
+    case Both:
+      motorList[0].setActive(1);
+      motorList[1].setActive(1);
+      ledOn(FIRST_LED);
+      ledOn(SECOND_LED);
+      break;
+  }
+}
+
+motorActiveState getCurrentActiveState() {
+  bool firstActive = motorList[0].isActive();
+  bool secondActive = motorList[1].isActive();
+
+  if (firstActive && secondActive) {
+    return Both;
+  } else if (firstActive) {
+    return First;
+  } else if (secondActive) {
+    return Second;
   }
 }
 
