@@ -7,6 +7,7 @@
 
 enum motorState {Idle, Up, Down};
 enum motorManagerMode {Auto, Calibration};
+enum motorLocation {Left, Right};
 
 struct MotorStruct {
   bool active;
@@ -21,6 +22,8 @@ class Motor {
     enum motorState _prevState;
     MotorStruct _data;
     int _eeAddress;
+    int _UP;
+    int _DOWN;
     void _switchStepperDirection(motorManagerMode mtrMngMode);
     void _checkEndValues();
     void _changePosition();
@@ -28,7 +31,7 @@ class Motor {
 
   public:
     bool needSave;
-    Motor(byte pinA, byte pinB, byte pinC, byte pinD);
+    Motor(motorLocation location, byte pinA, byte pinB, byte pinC, byte pinD);
     void initData(bool firstInit, int index);
     void initStepper();
     void print();

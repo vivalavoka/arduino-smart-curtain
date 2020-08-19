@@ -1,9 +1,5 @@
 #include "Motor.h"
 
-// крутить по часовой, чтобы поднять штору
-const int _UP = CW;
-// крутить против часовой, чтобы опустить штору
-const int _DOWN = CCW;
 // минимальная позиция (открытое состоения шторы)
 const float MIN_POSITION=1.0;
 // количество оборотов до полного закрытия шторы
@@ -14,10 +10,13 @@ int min_degress = 18;
 // 0.05
 float min_step = (float)min_degress / 360.0;
 
-Motor::Motor(byte pinA, byte pinB, byte pinC, byte pinD) {
+Motor::Motor(motorLocation location, byte pinA, byte pinB, byte pinC, byte pinD) {
     this->_stepper = new CustomStepper(pinA, pinB, pinC, pinD);
     this->_curState = Idle;
     this->_prevState = Idle;
+
+    this->_UP = location == Left ? CCW : CW;
+    this->_DOWN = location == Left ? CW : CCW;
 }
 
 void Motor::initData(bool firstInit, int index) {
@@ -93,10 +92,10 @@ void Motor::loop(motorManagerMode mtrMngMode) {
 void Motor::_switchStepperDirection(motorManagerMode mtrMngMode) {
     switch (this->_curState) {
         case Up:
-            this->_stepper->setDirection(_UP);
+            this->_stepper->setDirection(this->_UP);
             break;
         case Down:
-            this->_stepper->setDirection(_DOWN);
+            this->_stepper->setDirection(this->_DOWN);
             if (mtrMngMode == Calibration) {
                 this->_data.curPosition = MIN_POSITION;
             }

@@ -47,9 +47,9 @@ motorActiveState mtrActiveState = Both;
 enum motorManagerMode mtrMngMode = Auto;
 
 // Указываем пины, к которым подключен драйвера шаговых двигателей
-Motor firstMotor(8, 9, 10, 11);
+Motor firstMotor(Left, 8, 9, 10, 11);
 
-Motor secondMotor(4, 5, 6, 7);
+Motor secondMotor(Right, 4, 5, 6, 7);
 
 Motor motorList[] = {firstMotor, secondMotor};
 
