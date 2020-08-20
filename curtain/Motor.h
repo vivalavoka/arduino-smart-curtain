@@ -5,6 +5,7 @@
 #include <CustomStepper.h>
 #include <EEPROM.h>
 
+
 enum motorState {Idle, Up, Down};
 enum motorManagerMode {Auto, Calibration};
 enum motorLocation {Left, Right};
@@ -22,16 +23,20 @@ class Motor {
     enum motorState _prevState;
     MotorStruct _data;
     int _eeAddress;
+    int _LED_PIN;
     int _UP;
     int _DOWN;
     void _switchStepperDirection(motorManagerMode mtrMngMode);
     void _checkEndValues();
     void _changePosition();
     bool _isSimilar(float A, float B);
+    void _setupLed();
+    void _ledOn();
+    void _ledOff();
 
   public:
     bool needSave;
-    Motor(motorLocation location, byte pinA, byte pinB, byte pinC, byte pinD);
+    Motor(motorLocation location, byte pinA, byte pinB, byte pinC, byte pinD, int ledPin);
     void initData(bool firstInit, int index);
     void initStepper();
     void print();

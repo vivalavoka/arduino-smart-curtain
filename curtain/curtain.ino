@@ -14,7 +14,9 @@
 #include "IRremote.h"
 #include "Motor.h"
 
-const int ir_pin = A0;
+const int piezoPin = 2;
+const int btPin = 13;
+const int irPin = A0;
 enum irEvent {Close, Open, Stop, MenuSwitch, MotorSwitch};
 const unsigned long minus = 16769055;
 const unsigned long pause = 16761405;
@@ -23,7 +25,7 @@ const unsigned long next = 16712445;
 const unsigned long prev = 16720605;
 const unsigned long zero = 16738455;
 
-IRrecv irrecv(ir_pin);
+IRrecv irrecv(irPin);
 decode_results results;
 
 enum motorActiveState {First, Second, Both};
@@ -41,9 +43,11 @@ unsigned long pressTimestamp;
 enum motorManagerMode mtrMngMode = Auto;
 
 // Указываем пины, к которым подключен драйвера шаговых двигателей
-Motor firstMotor(Left, 8, 9, 10, 11);
+int FIRST_LED = 12;
+Motor firstMotor(Left, 8, 9, 10, 11, FIRST_LED);
 
-Motor secondMotor(Right, 4, 5, 6, 7);
+int SECOND_LED = 3;
+Motor secondMotor(Right, 4, 5, 6, 7, SECOND_LED);
 
 Motor motorList[] = {firstMotor, secondMotor};
 
@@ -53,19 +57,6 @@ void printStructList() {
     Serial.print(" Motor:\n");
     motorList[i].print();
   }
-}
-
-int btPin = 13;
-int piezoPin = 2;
-int FIRST_LED = 12;
-int SECOND_LED = 3;
-
-void ledOn(int ledPin) {
-  digitalWrite(ledPin, HIGH);
-}
-
-void ledOff(int ledPin) {
-  digitalWrite(ledPin, LOW);
 }
 
 //короткий звук
@@ -87,7 +78,7 @@ void setup() {
   pinMode(SECOND_LED, OUTPUT);
 
   irrecv.enableIRIn();
-  pinMode(ir_pin, INPUT);
+  pinMode(irPin, INPUT);
 
   bool firstInit = false;
   if (EEPROM.read(INIT_ADDR) != INIT_KEY) {
@@ -222,20 +213,14 @@ void setMotorActivities() {
     case First:
       motorList[0].setActive(1);
       motorList[1].setActive(0);
-      ledOn(FIRST_LED);
-      ledOff(SECOND_LED);
       break;
     case Second:
       motorList[0].setActive(0);
       motorList[1].setActive(1);
-      ledOff(FIRST_LED);
-      ledOn(SECOND_LED);
       break;
     case Both:
       motorList[0].setActive(1);
       motorList[1].setActive(1);
-      ledOn(FIRST_LED);
-      ledOn(SECOND_LED);
       break;
   }
 }

@@ -10,13 +10,15 @@ int min_degress = 18;
 // 0.05
 float min_step = (float)min_degress / 360.0;
 
-Motor::Motor(motorLocation location, byte pinA, byte pinB, byte pinC, byte pinD) {
+Motor::Motor(motorLocation location, byte pinA, byte pinB, byte pinC, byte pinD, int ledPin) {
     this->_stepper = new CustomStepper(pinA, pinB, pinC, pinD);
     this->_curState = Idle;
     this->_prevState = Idle;
 
     this->_UP = location == Left ? CCW : CW;
     this->_DOWN = location == Left ? CW : CCW;
+
+    this->_LED_PIN = ledPin;
 }
 
 void Motor::initData(bool firstInit, int index) {
@@ -160,9 +162,26 @@ motorState Motor::getPrevState() {
 
 void Motor::setActive(bool state) {
     this->_data.active = state;
+    this->_setupLed();
 }
 
 void Motor::saveData() {
     EEPROM.put(this->_eeAddress, this->_data);
     this->needSave = false;
+}
+
+void Motor::_setupLed() {
+    if (this->_data.active) {
+        this->_ledOn();
+    } else {
+        this->_ledOff();
+    }
+}
+
+void Motor::_ledOn() {
+    digitalWrite(this->_LED_PIN, HIGH);
+}
+
+void Motor::_ledOff() {
+    digitalWrite(this->_LED_PIN, LOW);
 }
