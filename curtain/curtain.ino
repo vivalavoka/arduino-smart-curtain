@@ -315,7 +315,6 @@ void buttonControl() {
   }
 }
 
-
 void doButtonEvent(enum event e) {
   switch (e) {
     case Press:
@@ -336,7 +335,6 @@ void doButtonEvent(enum event e) {
     case WaitHold:
       if (btnState == Click) {
         btnState = Hold;
-        doButtonEvent(Release);
       }
       break;
   }
@@ -350,6 +348,7 @@ void onClick(enum buttonState s) {
       break;
     case Hold:
       Serial.print("Hold\n");
+      doEvent(MenuSwitch, &motorList[0]);
       break;
   }
 }
