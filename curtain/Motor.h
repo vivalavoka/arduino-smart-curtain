@@ -7,7 +7,7 @@
 
 
 enum motorState {Idle, Up, Down};
-enum motorManagerMode {Auto, Calibration};
+enum motorManagerMode {Work, Calibration};
 enum motorLocation {Left, Right};
 
 struct MotorStruct {

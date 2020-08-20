@@ -81,7 +81,7 @@ void Motor::loop(motorManagerMode mtrMngMode) {
             this->_prevState = this->_curState;
         }
 
-        if (mtrMngMode == Auto) {
+        if (mtrMngMode == Work) {
             this->_checkEndValues();
         }
 
